@@ -583,3 +583,7 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudio
 # Local SQLite dev database
 *.db
+
+# Working/planning docs — kept local, not part of the portfolio repo (README stays tracked)
+*.md
+!README.md

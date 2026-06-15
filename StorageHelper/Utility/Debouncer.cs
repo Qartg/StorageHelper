@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StorageHelper.Utility
+﻿namespace StorageHelper.Utility
 {
     public class Debouncer : IDisposable
     {
         private readonly TimeSpan _time;
-        private CancellationTokenSource _cts;
+        private CancellationTokenSource? _cts;
         private readonly object _lock = new object();   
 
         public Debouncer(TimeSpan time)
@@ -26,7 +20,7 @@ namespace StorageHelper.Utility
             }
         }
 
-        public void Run(Func<CancellationToken, Task> action, Action<Exception> onError = null)
+        public void Run(Func<CancellationToken, Task> action, Action<Exception>? onError = null)
         {
             lock (_lock)
             {
@@ -51,7 +45,8 @@ namespace StorageHelper.Utility
                 }
                 catch (Exception ex)
                 {
-                    onError(ex);
+                    if(onError != null)
+                        onError(ex);
                 }
             }, token);
         }

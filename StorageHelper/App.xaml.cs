@@ -14,7 +14,7 @@ namespace StorageHelper
     /// </summary>
     public partial class App : Application
     {
-        private static IServiceProvider? ServiceProvider { get; set; }
+        private static IServiceProvider ServiceProvider { get; set; } = null!;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -24,7 +24,7 @@ namespace StorageHelper
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            string connString = config.GetConnectionString("DefaultConnection");
+            string connString = config.GetConnectionString("DefaultConnection") ?? "Data Source=Storage.db";
 
             var services = new ServiceCollection();
             //Db

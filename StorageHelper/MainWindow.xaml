@@ -1,31 +1,55 @@
-﻿<Window x:Class="StorageHelper.MainWindow"
+<Window x:Class="StorageHelper.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:StorageHelper"
         xmlns:Behaviors="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:vm="clr-namespace:StorageHelper.ViewModels"
+        xmlns:view="clr-namespace:StorageHelper.Views"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" >
+        Title="StorageHelper — Инвентаризация"
+        Height="640" Width="840" MinWidth="520"
+        Background="{StaticResource WindowBackgroundBrush}">
 
     <Behaviors:Interaction.Triggers>
         <Behaviors:EventTrigger EventName="Loaded">
             <Behaviors:InvokeCommandAction Command="{Binding LoadedCommand}"/>
         </Behaviors:EventTrigger>
     </Behaviors:Interaction.Triggers>
-    
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:ItemCardViewModel}">
+            <view:ItemCard/>
+        </DataTemplate>
+    </Window.Resources>
+
     <Grid>
-        <ListBox ItemsSource="{Binding StorageItems}">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Name}" Margin="5"/>
-                        <TextBlock Text="{Binding Description}" Margin="5"/>
-                        <TextBlock Text="{Binding ParLevel}" Margin="5"/>
-                        <TextBlock Text="{Binding CurrentOnStorage}" Margin="5"/>
-                    </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <Border Grid.Row="0" Background="{StaticResource HeaderBackgroundBrush}"
+                BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                Padding="20,16">
+            <TextBlock Text="Инвентаризация" Style="{StaticResource HeaderTitleText}"/>
+        </Border>
+
+        <!-- Сетка карточек -->
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding StorageItems}"
+                 Background="Transparent" BorderThickness="0"
+                 Padding="12"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ItemContainerStyle="{StaticResource CardListBoxItemStyle}">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
         </ListBox>
     </Grid>
 </Window>

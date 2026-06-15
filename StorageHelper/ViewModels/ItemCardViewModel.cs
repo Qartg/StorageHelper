@@ -14,43 +14,48 @@ namespace StorageHelper.ViewModels
 
         private readonly Debouncer _debouncer = new(TimeSpan.FromMilliseconds(1500));
 
-        public string? Name => _currentItem.Name;
+        public string Name => _currentItem.Name;
         public string? Description => _currentItem.Description;
         public string? ImageURL => _currentItem.ImageURL;
-        public int ParLevel => _currentItem.ParLevel;
+
+        [ObservableProperty]
+        private int _parLevel;
 
         [ObservableProperty]
         private int _currentOnStorage;
+
+        public bool IsLowStock => _currentItem.CurrentOnStorage < _currentItem.ParLevel;
 
         public ItemCardViewModel(IDataBaseService dataBase, Item item)
         {
             _dataBase = dataBase;
             _currentItem = item;
 
-            _currentOnStorage = item.CurrentOnStorage;
+            CurrentOnStorage = item.CurrentOnStorage;
+            ParLevel = item.ParLevel;
         }
 
         partial void OnCurrentOnStorageChanged(int oldValue, int newValue)
         {
-            _currentItem.CurrentOnStorage = newValue;
+            _currentItem.CurrentOnStorage = CurrentOnStorage;
+
+            OnPropertyChanged(nameof(IsLowStock));
+            CallUpdateDB();
+        }
+
+        partial void OnParLevelChanged(int oldValue, int newValue)
+        {
+            _currentItem.ParLevel = ParLevel;
+
+            OnPropertyChanged(nameof(IsLowStock));
             CallUpdateDB();
         }
 
         [RelayCommand]
-        private void PlusItemCount()
-        {
-            _currentItem.CurrentOnStorage++;
-
-            CallUpdateDB();
-        }
+        private void PlusItemCount() => CurrentOnStorage++;
 
         [RelayCommand]
-        private void MinusItemCount()
-        {
-            _currentItem.CurrentOnStorage--;
-
-            CallUpdateDB();
-        }
+        private void MinusItemCount() { if (CurrentOnStorage > 0) CurrentOnStorage--; }
 
         private void CallUpdateDB()
         {

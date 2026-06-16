@@ -9,5 +9,7 @@ namespace StorageHelper.Services
         public DbSet<PriceRecord> PriceRecords { get; set; }
 
         public StorageContext(DbContextOptions<StorageContext> options) : base(options) { }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<Item>().HasIndex(i => i.Sku).IsUnique();
     }
 }

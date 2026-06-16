@@ -1,13 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using StorageHelper.Models;
-using System.Diagnostics;
 
 namespace StorageHelper.Services
 {
     public interface IDataBaseService
     {
         public Task<IEnumerable<Item>> GetItemsList();
-        public Task AddItem(Item item);
+        public Task<bool> AddItem(Item item);
         public Task<bool> UpdateItem(Item item);
         public Task<bool> SetIsActive(int itemId, bool active);
         public Task<bool> DeleteItem(int itemId);
@@ -22,44 +21,69 @@ namespace StorageHelper.Services
             _dbContext = dbContext;
         }
 
-        public async Task AddItem(Item item)
+        public async Task<bool> AddItem(Item item)
         {
-            using var db = await _dbContext.CreateDbContextAsync();
+            try
+            {
+                using var db = await _dbContext.CreateDbContextAsync();
 
-            db.Items.Add(item);
-            await db.SaveChangesAsync();
+                db.Items.Add(item);
+                await db.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException)
+            {
+                return false;
+            }
         }
 
         public async Task<bool> DeleteItem(int itemId)
         {
-            using var db = await _dbContext.CreateDbContextAsync();
-
-            var ctxItem = await db.Items.FindAsync(itemId);
-            if (ctxItem != null)
+            try
             {
-                db.Items.Remove(ctxItem);
-                await db.SaveChangesAsync();
-                return true;
+                using var db = await _dbContext.CreateDbContextAsync();
+
+                var ctxItem = await db.Items.FindAsync(itemId);
+                if (ctxItem != null)
+                {
+                    db.Items.Remove(ctxItem);
+                    await db.SaveChangesAsync();
+                    return true;
+                }
+                return false;
             }
-            return false;
+            catch (DbUpdateException)
+            {
+                return false;
+            }
         }
 
         public async Task<bool> UpdateItem(Item item)
         {
-            using var db = await _dbContext.CreateDbContextAsync();
-
-            var ctxItem = await db.Items.FindAsync(item.Id);
-            if(ctxItem != null)
+            try
             {
-                ctxItem.ImageURL = item.ImageURL;
-                ctxItem.Name = item.Name;
-                ctxItem.Description = item.Description; 
-                ctxItem.CurrentOnStorage = item.CurrentOnStorage;
-                ctxItem.ParLevel = item.ParLevel;
-                await db.SaveChangesAsync();
-                return true;
+                using var db = await _dbContext.CreateDbContextAsync();
+
+                var ctxItem = await db.Items.FindAsync(item.Id);
+                if (ctxItem != null)
+                {
+                    ctxItem.ImageURL = item.ImageURL;
+                    ctxItem.Name = item.Name;
+                    ctxItem.CurrentOnStorage = item.CurrentOnStorage;
+                    ctxItem.Sku = item.Sku;
+                    ctxItem.Notes = item.Notes;
+                    ctxItem.Vendor = item.Vendor;
+                    ctxItem.IsActive = item.IsActive;
+                    ctxItem.ParLevel = item.ParLevel;
+                    await db.SaveChangesAsync();
+                    return true;
+                }
+                return false;
             }
-            return false;
+            catch (DbUpdateException)
+            {
+                return false;
+            }
         }
 
         public async Task<IEnumerable<Item>> GetItemsList()
@@ -71,16 +95,23 @@ namespace StorageHelper.Services
 
         public async Task<bool> SetIsActive(int itemId, bool active)
         {
-            using var db = await _dbContext.CreateDbContextAsync();
-
-            var ctxItem = await db.Items.FindAsync(itemId);
-            if (ctxItem != null)
+            try
             {
-                ctxItem.IsActive = active;
-                await db.SaveChangesAsync();
-                return true;
+                using var db = await _dbContext.CreateDbContextAsync();
+
+                var ctxItem = await db.Items.FindAsync(itemId);
+                if (ctxItem != null)
+                {
+                    ctxItem.IsActive = active;
+                    await db.SaveChangesAsync();
+                    return true;
+                }
+                return false;
             }
-            return false;
+            catch (DbUpdateException)
+            {
+                return false;
+            }
         }
     }
 }

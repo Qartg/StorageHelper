@@ -29,17 +29,17 @@
             <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}" Margin="0,10,0,0"/>
             <TextBlock Text="{Binding Description}" Style="{StaticResource CardSubtleText}" Margin="0,2,0,0"/>
 
-            <!-- Целевой остаток (par level) — редактирует менеджер -->
-            <StackPanel Orientation="Horizontal" Margin="0,10,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Цель:" Style="{StaticResource FieldLabelText}"
-                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBox Text="{Binding ParLevel, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource CardTextBoxStyle}" MinWidth="56">
-                    <Behaviors:Interaction.Behaviors>
-                        <myBehaivors:NumericBoxBehavior/>
-                    </Behaviors:Interaction.Behaviors>
-                </TextBox>
-            </StackPanel>
+            <!-- SKU и поставщик -->
+            <TextBlock Style="{StaticResource FieldLabelText}" Margin="0,6,0,0"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding Sku, StringFormat='SKU: {0}'}"/>
+            <TextBlock Style="{StaticResource FieldLabelText}" Margin="0,1,0,0"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding Vendor, StringFormat='Поставщик: {0}'}"/>
+
+            <!-- Целевой остаток (только для чтения; правка — в форме редактирования) -->
+            <TextBlock Text="{Binding ParLevel, StringFormat='Цель: {0}'}"
+                       Style="{StaticResource FieldLabelText}" Margin="0,1,0,0"/>
 
             <!-- Счётчик остатка на складе -->
             <Grid Margin="0,12,0,0">
@@ -68,6 +68,14 @@
                         Command="{Binding PlusItemCountCommand}"
                         Style="{StaticResource PlusButtonStyle}"/>
             </Grid>
+
+            <!-- Редактирование (команда в StorageViewModel) -->
+            <Button Content="Изменить" Margin="0,10,0,0"
+                    HorizontalAlignment="Stretch"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Command="{Binding DataContext.EditCardCommand,
+                                      RelativeSource={RelativeSource AncestorType=ListBox}}"
+                    CommandParameter="{Binding}"/>
 
         </StackPanel>
     </Border>

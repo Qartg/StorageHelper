@@ -34,7 +34,13 @@
         <Border Grid.Row="0" Background="{StaticResource HeaderBackgroundBrush}"
                 BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1"
                 Padding="20,16">
-            <TextBlock Text="Инвентаризация" Style="{StaticResource HeaderTitleText}"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="+ Добавить товар"
+                        Command="{Binding AddCardCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}"/>
+                <TextBlock Text="Инвентаризация" Style="{StaticResource HeaderTitleText}"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
         </Border>
 
         <!-- Сетка карточек -->

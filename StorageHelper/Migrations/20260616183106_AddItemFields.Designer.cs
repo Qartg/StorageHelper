@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StorageHelper.Services;
 
@@ -10,9 +11,11 @@ using StorageHelper.Services;
 namespace StorageHelper.Migrations
 {
     [DbContext(typeof(StorageContext))]
-    partial class StorageContextModelSnapshot : ModelSnapshot
+    [Migration("20260616183106_AddItemFields")]
+    partial class AddItemFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.17");
@@ -39,22 +42,10 @@ namespace StorageHelper.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("ParLevel")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Sku")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Vendor")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("Sku")
-                        .IsUnique();
 
                     b.ToTable("Items");
                 });

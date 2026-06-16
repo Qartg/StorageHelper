@@ -33,8 +33,10 @@ namespace StorageHelper
             //vm windows
             services.AddSingleton<StorageViewModel>();
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<IDialogService, DialogService>();
             //factory
             services.AddSingleton<Func<Item, ItemCardViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
+            services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
 
             //build
             ServiceProvider = services.BuildServiceProvider();

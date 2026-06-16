@@ -16,10 +16,11 @@ namespace StorageHelper.ViewModels
 
         public string Name => _currentItem.Name;
         public string? Description => _currentItem.Description;
+        public string? Sku => _currentItem.Sku;
+        public string? Vendor => _currentItem.Vendor;
         public string? ImageURL => _currentItem.ImageURL;
-
-        [ObservableProperty]
-        private int _parLevel;
+        public int ParLevel => _currentItem.ParLevel;
+        public Item Item => _currentItem;
 
         [ObservableProperty]
         private int _currentOnStorage;
@@ -32,20 +33,11 @@ namespace StorageHelper.ViewModels
             _currentItem = item;
 
             CurrentOnStorage = item.CurrentOnStorage;
-            ParLevel = item.ParLevel;
         }
 
         partial void OnCurrentOnStorageChanged(int oldValue, int newValue)
         {
             _currentItem.CurrentOnStorage = CurrentOnStorage;
-
-            OnPropertyChanged(nameof(IsLowStock));
-            CallUpdateDB();
-        }
-
-        partial void OnParLevelChanged(int oldValue, int newValue)
-        {
-            _currentItem.ParLevel = ParLevel;
 
             OnPropertyChanged(nameof(IsLowStock));
             CallUpdateDB();
@@ -57,6 +49,7 @@ namespace StorageHelper.ViewModels
         [RelayCommand]
         private void MinusItemCount() { if (CurrentOnStorage > 0) CurrentOnStorage--; }
 
+    
         private void CallUpdateDB()
         {
             _debouncer.Run(

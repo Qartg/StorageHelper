@@ -16,10 +16,11 @@ namespace StorageHelper.ViewModels
 
         public string Name => _currentItem.Name;
         public string? Description => _currentItem.Description;
-        public string? Sku => _currentItem.Sku;
+        public string Sku => _currentItem.Sku!;
         public string? Vendor => _currentItem.Vendor;
         public string? ImageURL => _currentItem.ImageURL;
         public int ParLevel => _currentItem.ParLevel;
+        public bool IsOrderable => _currentItem.IsOredrable;
         public Item Item => _currentItem;
 
         [ObservableProperty]

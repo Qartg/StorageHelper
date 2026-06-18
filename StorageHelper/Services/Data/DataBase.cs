@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using StorageHelper.Models;
 
 namespace StorageHelper.Services
@@ -31,7 +32,7 @@ namespace StorageHelper.Services
                 await db.SaveChangesAsync();
                 return true;
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteExtendedErrorCode: 2067 })
             {
                 return false;
             }
@@ -67,20 +68,22 @@ namespace StorageHelper.Services
                 var ctxItem = await db.Items.FindAsync(item.Id);
                 if (ctxItem != null)
                 {
-                    ctxItem.ImageURL = item.ImageURL;
-                    ctxItem.Name = item.Name;
-                    ctxItem.CurrentOnStorage = item.CurrentOnStorage;
                     ctxItem.Sku = item.Sku;
+                    ctxItem.Name = item.Name;
+                    ctxItem.Description = item.Description;
                     ctxItem.Notes = item.Notes;
                     ctxItem.Vendor = item.Vendor;
-                    ctxItem.IsActive = item.IsActive;
+                    ctxItem.ImageURL = item.ImageURL;
                     ctxItem.ParLevel = item.ParLevel;
+                    ctxItem.CurrentOnStorage = item.CurrentOnStorage;
+                    ctxItem.IsActive = item.IsActive;
+                    ctxItem.IsOredrable = item.IsOredrable;
                     await db.SaveChangesAsync();
                     return true;
                 }
                 return false;
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteExtendedErrorCode: 2067 })
             {
                 return false;
             }
@@ -90,7 +93,7 @@ namespace StorageHelper.Services
         {
             using var db = await _dbContext.CreateDbContextAsync();
 
-            return await db.Items.Where((item) => item.IsActive || item.CurrentOnStorage > 0).ToListAsync();
+                return await db.Items.ToListAsync();
         }
 
         public async Task<bool> SetIsActive(int itemId, bool active)

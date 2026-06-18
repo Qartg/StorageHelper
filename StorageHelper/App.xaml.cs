@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StorageHelper.Models;
 using StorageHelper.Services;
+using StorageHelper.Services.Data;
 using StorageHelper.ViewModels;
 using System.IO;
 using System.Windows;
@@ -20,16 +21,21 @@ namespace StorageHelper
         {
             base.OnStartup(e);
 
-            var config = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            string connString = config.GetConnectionString("DefaultConnection") ?? "Data Source=Storage.db";
-
             var services = new ServiceCollection();
+
+            //Config
+            services.AddSingleton<IConfigService, ConfigService>(sp =>{
+                var cfg = new ConfigService("Config/Config.json");
+                cfg.Load();
+                return cfg;
+            });
             //Db
-            services.AddDbContextFactory<StorageContext>(opt => opt.UseSqlite(connString));
+            services.AddDbContextFactory<StorageContext>((sp, opt) => 
+            opt.UseSqlite(sp.GetRequiredService<IConfigService>().Current.ConnectionString)
+            );
+            //services
             services.AddSingleton<IDataBaseService, SqliteDataBase>();
+            services.AddSingleton<IAuthService, AuthService>();
             //vm windows
             services.AddSingleton<StorageViewModel>();
             services.AddSingleton<MainWindow>();
@@ -37,6 +43,8 @@ namespace StorageHelper
             //factory
             services.AddSingleton<Func<Item, ItemCardViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
             services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
+            services.AddSingleton<Func<AppSettings>>(sp => () => sp.GetRequiredService<IConfigService>().Current);
+            services.AddSingleton<Func<LoginViewModel>>(sp => () => new(sp.GetRequiredService<IAuthService>()));
 
             //build
             ServiceProvider = services.BuildServiceProvider();

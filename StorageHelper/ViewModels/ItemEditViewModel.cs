@@ -82,7 +82,7 @@ namespace StorageHelper.ViewModels
             }
 
             if (!result)
-                ErrorText = "Операция не удалась";
+                ErrorText = "Такой Sku уже существует";
             else
                 Close(true);
         }

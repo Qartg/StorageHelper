@@ -22,29 +22,116 @@
         <DataTemplate DataType="{x:Type vm:ItemCardViewModel}">
             <view:ItemCard/>
         </DataTemplate>
+
+        <!-- Обёртки видимости: вешаются на Border вокруг элемента -->
+        <!-- Видно только в режиме менеджера -->
+        <Style x:Key="ManagerOnly" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsManagerMode}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Скрыто в режиме менеджера (видно обычному пользователю) -->
+        <Style x:Key="ManagerHidden" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsManagerMode}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка -->
+        <!-- Шапка: заголовок + логин / режим менеджера -->
         <Border Grid.Row="0" Background="{StaticResource HeaderBackgroundBrush}"
                 BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1"
-                Padding="20,16">
+                Padding="20,14">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Content="+ Добавить товар"
-                        Command="{Binding AddCardCommand}"
-                        Style="{StaticResource PrimaryButtonStyle}"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Индикатор режима менеджера -->
+                    <Border Style="{StaticResource ManagerOnly}"
+                            Background="{StaticResource AccentBrush}" CornerRadius="6"
+                            Padding="10,4" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="Режим менеджера" Foreground="White"
+                                   FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+
+                    <!-- Войти (виден обычному пользователю) -->
+                    <Border Style="{StaticResource ManagerHidden}">
+                        <Button Content="Войти как менеджер"
+                                Command="{Binding LoginCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Border>
+
+                    <!-- Выйти (виден в режиме менеджера) -->
+                    <Border Style="{StaticResource ManagerOnly}">
+                        <Button Content="Выйти"
+                                Command="{Binding LogoutCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Border>
+
+                    <!-- Добавить товар (только в режиме менеджера) -->
+                    <Border Style="{StaticResource ManagerOnly}" Margin="10,0,0,0">
+                        <Button Content="+ Добавить товар"
+                                Command="{Binding AddCardCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"/>
+                    </Border>
+                </StackPanel>
+
                 <TextBlock Text="Инвентаризация" Style="{StaticResource HeaderTitleText}"
                            VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
+        <!-- Панель поиска -->
+        <Border Grid.Row="1" Background="{StaticResource HeaderBackgroundBrush}"
+                BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                Padding="20,10">
+            <DockPanel>
+                <!-- Показать неактивные (только менеджеру) -->
+                <Border DockPanel.Dock="Right" Style="{StaticResource ManagerOnly}"
+                        Margin="16,0,0,0" VerticalAlignment="Center">
+                    <CheckBox Content="Показать неактивные"
+                              IsChecked="{Binding ShowInactive}"
+                              Foreground="{StaticResource TextSecondaryBrush}"
+                              VerticalAlignment="Center"/>
+                </Border>
+
+                <Grid MaxWidth="420" HorizontalAlignment="Left">
+                    <TextBox x:Name="SearchBox"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FormTextBoxStyle}"/>
+                    <TextBlock Text="Поиск по названию или SKU…" IsHitTestVisible="False"
+                               Foreground="{StaticResource PlaceholderTextBrush}"
+                               VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </DockPanel>
+        </Border>
+
         <!-- Сетка карточек -->
-        <ListBox Grid.Row="1"
+        <ListBox Grid.Row="2"
                  ItemsSource="{Binding StorageItems}"
                  Background="Transparent" BorderThickness="0"
                  Padding="12"

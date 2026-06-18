@@ -12,6 +12,7 @@
         public int ParLevel { get; set; }
         public int CurrentOnStorage { get; set; }
         public bool IsActive { get; set; }
+        public bool IsOredrable { get; set; }
 
         public List<PriceRecord> PriceRecords { get; } = new();
     }

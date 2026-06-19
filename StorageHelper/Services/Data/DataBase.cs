@@ -93,7 +93,7 @@ namespace StorageHelper.Services
         {
             using var db = await _dbContext.CreateDbContextAsync();
 
-                return await db.Items.ToListAsync();
+            return await db.Items.Include(i => i.PriceRecords).ToListAsync();
         }
 
         public async Task<bool> SetIsActive(int itemId, bool active)

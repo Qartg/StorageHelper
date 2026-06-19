@@ -1,10 +1,6 @@
 ﻿namespace StorageHelper.Models
 {
-    public struct PasswordData
-    {
-        public string Hash {  get; set; }
-        public string Salt { get; set; }
-    }
+    public record class PasswordData(string Hash, string Salt);
 
     public class AppSettings
     {

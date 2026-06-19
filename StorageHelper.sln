@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageHelper", "StorageHel
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageHelper.Tests", "StorageHelper.Tests\StorageHelper.Tests.csproj", "{55CF65A2-FD89-4D5E-BDD8-58F1AB7D438F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +19,10 @@ Global
 		{36D8CE82-E1D1-4DE4-871B-98D8861D74BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36D8CE82-E1D1-4DE4-871B-98D8861D74BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36D8CE82-E1D1-4DE4-871B-98D8861D74BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55CF65A2-FD89-4D5E-BDD8-58F1AB7D438F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55CF65A2-FD89-4D5E-BDD8-58F1AB7D438F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55CF65A2-FD89-4D5E-BDD8-58F1AB7D438F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55CF65A2-FD89-4D5E-BDD8-58F1AB7D438F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

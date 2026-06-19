@@ -11,6 +11,7 @@ namespace StorageHelper.ViewModels
     {
         private Item _currentItem;
         private IDataBaseService _dataBase;
+        private IPricingService _pricingService;
 
         private readonly Debouncer _debouncer = new(TimeSpan.FromMilliseconds(1500));
 
@@ -23,17 +24,24 @@ namespace StorageHelper.ViewModels
         public bool IsOrderable => _currentItem.IsOredrable;
         public Item Item => _currentItem;
 
-        [ObservableProperty]
-        private int _currentOnStorage;
+        [ObservableProperty] private int _currentOnStorage;
+        [ObservableProperty] private decimal? _currentPrice;
+        [ObservableProperty] private decimal _reOrderQuantity;
+        [ObservableProperty] private decimal? _priceChangePercent;
 
+        public bool IsPriceUp => PriceChangePercent > 0;
+        public bool IsPriceDown => PriceChangePercent < 0;
         public bool IsLowStock => _currentItem.CurrentOnStorage < _currentItem.ParLevel;
 
-        public ItemCardViewModel(IDataBaseService dataBase, Item item)
+        public ItemCardViewModel(IDataBaseService dataBase, Item item, IPricingService pricingService)
         {
             _dataBase = dataBase;
             _currentItem = item;
+            _pricingService = pricingService;
 
             CurrentOnStorage = item.CurrentOnStorage;
+
+            CalculatePriceFields();
         }
 
         partial void OnCurrentOnStorageChanged(int oldValue, int newValue)
@@ -41,6 +49,7 @@ namespace StorageHelper.ViewModels
             _currentItem.CurrentOnStorage = CurrentOnStorage;
 
             OnPropertyChanged(nameof(IsLowStock));
+            ReOrderQuantity = _pricingService.ToOrder(CurrentOnStorage, ParLevel);
             CallUpdateDB();
         }
 
@@ -49,7 +58,6 @@ namespace StorageHelper.ViewModels
 
         [RelayCommand]
         private void MinusItemCount() { if (CurrentOnStorage > 0) CurrentOnStorage--; }
-
     
         private void CallUpdateDB()
         {
@@ -57,6 +65,15 @@ namespace StorageHelper.ViewModels
                 async (token) => await _dataBase.UpdateItem(_currentItem),
                 (ex) => Application.Current.Dispatcher.Invoke(() => throw ex)
                 );
+        }
+
+        private void CalculatePriceFields()
+        {
+            PriceStats stats = _pricingService.CalculateStats(_currentItem.PriceRecords);
+
+            CurrentPrice = stats.Current;
+            ReOrderQuantity = _pricingService.ToOrder(CurrentOnStorage, ParLevel);
+            PriceChangePercent = _pricingService.IncreaseVsPrevious(stats.Current, stats.Previous);
         }
 
         public void Dispose()

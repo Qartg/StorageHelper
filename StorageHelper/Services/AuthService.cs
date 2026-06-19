@@ -28,11 +28,7 @@ namespace StorageHelper.Services
             {
                 byte[] salt = RandomNumberGenerator.GetBytes(16);
                 byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, ITERATIONS, HashAlgorithmName.SHA256, LENGTH);
-                _config.Current.Password = new()
-                {
-                    Hash = Convert.ToHexString(hash),
-                    Salt = Convert.ToHexString(salt)
-                };
+                _config.Current.Password = new(Convert.ToHexString(hash), Convert.ToHexString(salt));
 
                 await _config.SaveAsync();
 
@@ -40,8 +36,8 @@ namespace StorageHelper.Services
             }
 
             byte[] check = Rfc2898DeriveBytes.Pbkdf2(password, 
-                Convert.FromHexString(curPassword.Value.Salt), ITERATIONS, HashAlgorithmName.SHA256, LENGTH);
-            bool time = CryptographicOperations.FixedTimeEquals(check, Convert.FromHexString(curPassword.Value.Hash));
+                Convert.FromHexString(curPassword.Salt), ITERATIONS, HashAlgorithmName.SHA256, LENGTH);
+            bool time = CryptographicOperations.FixedTimeEquals(check, Convert.FromHexString(curPassword.Hash));
 
             return time;
         }

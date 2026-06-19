@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="PlaceholderBackgroundBrush" Color="#EEF2F5"/>
     <SolidColorBrush x:Key="PlaceholderTextBrush"      Color="#9AA5B1"/>
     <SolidColorBrush x:Key="DangerBrush"               Color="#E5484D"/>
+    <SolidColorBrush x:Key="SuccessBrush"              Color="#16A34A"/>
 
     <!-- ===================== Текст ===================== -->
     <Style x:Key="CardTitleText" TargetType="TextBlock">

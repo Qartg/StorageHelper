@@ -3,6 +3,7 @@ using StorageHelper.Services;
 
 namespace StorageHelper.Tests
 {
+
     public class PricingServiceTests
     {
         // sut = "system under test" — то, что проверяем

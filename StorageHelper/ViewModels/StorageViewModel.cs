@@ -4,6 +4,7 @@ using StorageHelper.Models;
 using StorageHelper.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Data;
 
 namespace StorageHelper.ViewModels
@@ -16,6 +17,7 @@ namespace StorageHelper.ViewModels
         private Func<Item, ItemCardViewModel> _loadCardFactory;
         private Func<Item?, ItemEditViewModel> _editCardFactory;
         private Func<LoginViewModel> _loginFactory;
+        private Func<IEnumerable<Item>, ReviewViewModel> _reviewFactory;
 
         private ICollectionView _view;
 
@@ -25,16 +27,18 @@ namespace StorageHelper.ViewModels
         [ObservableProperty] private bool _showInactive;
 
         public StorageViewModel(IDataBaseService dataBase, 
-            Func<Item, ItemCardViewModel> loadCardFactory, 
+            Func<Item, ItemCardViewModel> loadCardFactory,
             Func<Item?, ItemEditViewModel> editCardFactory,
-            IDialogService dialogService, 
-            Func<LoginViewModel> loginFactory)
+            IDialogService dialogService,
+            Func<LoginViewModel> loginFactory,
+            Func<IEnumerable<Item>, ReviewViewModel> reviewFactory)
         {
             _dataBase = dataBase;
             _loadCardFactory = loadCardFactory;
             _editCardFactory = editCardFactory;
             _dialogService = dialogService;
             _loginFactory = loginFactory;
+            _reviewFactory = reviewFactory;
 
             _view = CollectionViewSource.GetDefaultView(StorageItems);
             AddFilter();
@@ -88,6 +92,16 @@ namespace StorageHelper.ViewModels
 
         [RelayCommand]
         private void Logout() => IsManagerMode = false;
+
+        [RelayCommand]
+        private async Task ReviewAsync()
+        {
+            var vm = _reviewFactory(await _dataBase.GetItemsList());
+            if (_dialogService.ShowDialog(vm) == true)
+                MessageBox.Show("order");
+            else
+                MessageBox.Show("cancel");
+        }
 
         private void StorageItems_Clear()
         {

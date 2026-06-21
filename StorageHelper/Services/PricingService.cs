@@ -10,9 +10,9 @@ namespace StorageHelper.Services
         decimal? IncreaseVsPrevious(decimal? current, decimal? previous);
         decimal IncreaseVsMinimum(decimal current, decimal min);
         decimal BudgetImpact(int reorder, decimal current);
+        (IEnumerable<ReviewLine>, decimal?) BuildReview(IEnumerable<Item> items);
     }
 
-    //TODO: расчет роста цены
     public class PricingService : IPricingService
     {
         public PriceStats CalculateStats(IEnumerable<PriceRecord> records)
@@ -41,6 +41,29 @@ namespace StorageHelper.Services
                 Previous = second?.Price,
                 Minimum = min ?? most?.Price,
             };
+        }
+
+        public (IEnumerable<ReviewLine>, decimal?) BuildReview(IEnumerable<Item> items)
+        {
+            List<ReviewLine> result = new List<ReviewLine>();
+            decimal? total = 0;
+
+            foreach (Item item in items)
+            {
+                int quantity = ToOrder(item.CurrentOnStorage, item.ParLevel);
+                if (!item.IsActive || quantity == 0 || !item.IsOredrable) continue;
+
+                PriceStats stats = CalculateStats(item.PriceRecords);
+                decimal? changes = IncreaseVsPrevious(stats.Current, stats.Previous);
+                ReviewLine line = new(item.Name, item.Sku, quantity, stats.Current, changes);
+
+                result.Add(line);
+
+                if(line.LineTotal != null)
+                    total += line.LineTotal;
+            }
+
+            return (result, total);
         }
 
         public int ToOrder(int current, int parLevel) => Math.Max(0, parLevel - current);

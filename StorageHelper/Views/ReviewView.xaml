@@ -1,0 +1,92 @@
+<UserControl x:Class="StorageHelper.Views.ReviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:StorageHelper.Views"
+             mc:Ignorable="d"
+             d:DesignWidth="560">
+
+    <Border Background="{StaticResource CardBackgroundBrush}" Width="560" Padding="24,20">
+        <!-- IsSharedSizeScope: колонки строк и шапки выравниваются по общим группам -->
+        <DockPanel Grid.IsSharedSizeScope="True">
+
+            <TextBlock DockPanel.Dock="Top" Text="Сводка заказа"
+                       Style="{StaticResource HeaderTitleText}" Margin="0,0,0,14"/>
+
+            <!-- Итог + закрыть (внизу) -->
+            <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Text="{Binding Total, StringFormat='Итого: {0:0.##} ₽', TargetNullValue='Итого: —'}"/>
+                <Button Content="Закрыть" HorizontalAlignment="Right"
+                        Command="{Binding CancelCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}"/>
+            </Grid>
+
+            <!-- Шапка таблицы -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="C_Qty"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="C_Price"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="C_Change"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="C_Total"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Товар"   Style="{StaticResource FieldLabelText}"/>
+                <TextBlock Grid.Column="1" Text="К заказу" Style="{StaticResource FieldLabelText}" Margin="12,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="Цена"     Style="{StaticResource FieldLabelText}" Margin="12,0,0,0"/>
+                <TextBlock Grid.Column="3" Text="Δ"        Style="{StaticResource FieldLabelText}" Margin="12,0,0,0"/>
+                <TextBlock Grid.Column="4" Text="Сумма"    Style="{StaticResource FieldLabelText}" Margin="12,0,0,0"/>
+            </Grid>
+
+            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource CardBorderBrush}"/>
+
+            <!-- Список строк -->
+            <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Lines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                                    Padding="0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="C_Qty"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="C_Price"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="C_Change"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="C_Total"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Товар: название + SKU -->
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}" FontSize="13"/>
+                                        <TextBlock Text="{Binding Sku, StringFormat='SKU: {0}'}"
+                                                   Style="{StaticResource FieldLabelText}"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold"
+                                               Text="{Binding Quantity, StringFormat='{}{0} шт'}"/>
+
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="{Binding CurrentPrice, StringFormat='{}{0:0.##} ₽', TargetNullValue='—'}"/>
+
+                                    <TextBlock Grid.Column="3" VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Text="{Binding PriceChangesPercent, StringFormat='{}{0:+0%;-0%;0%}', TargetNullValue='—'}"/>
+
+                                    <TextBlock Grid.Column="4" VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold"
+                                               Text="{Binding LineTotal, StringFormat='{}{0:0.##} ₽', TargetNullValue='—'}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+        </DockPanel>
+    </Border>
+</UserControl>

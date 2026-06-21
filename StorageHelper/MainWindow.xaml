@@ -81,6 +81,13 @@
                                 Style="{StaticResource SecondaryButtonStyle}"/>
                     </Border>
 
+                    <!-- Сводка заказа (только в режиме менеджера) -->
+                    <Border Style="{StaticResource ManagerOnly}" Margin="10,0,0,0">
+                        <Button Content="Сводка заказа"
+                                Command="{Binding ReviewCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Border>
+
                     <!-- Добавить товар (только в режиме менеджера) -->
                     <Border Style="{StaticResource ManagerOnly}" Margin="10,0,0,0">
                         <Button Content="+ Добавить товар"

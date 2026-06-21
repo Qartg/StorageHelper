@@ -1,12 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StorageHelper.Models;
 using StorageHelper.Services;
 using StorageHelper.Services.Data;
 using StorageHelper.ViewModels;
-using System.IO;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 
 namespace StorageHelper
 {
@@ -37,17 +36,17 @@ namespace StorageHelper
             services.AddSingleton<IDataBaseService, SqliteDataBase>();
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IPricingService, PricingService>();
+            services.AddSingleton<IDialogService, DialogService>();
             //vm windows
             services.AddSingleton<StorageViewModel>();
             services.AddSingleton<MainWindow>();
-            services.AddSingleton<IDialogService, DialogService>();
             //factory
             services.AddSingleton<Func<Item, ItemCardViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(),
                 item, sp.GetRequiredService<IPricingService>()));
             services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
             services.AddSingleton<Func<AppSettings>>(sp => () => sp.GetRequiredService<IConfigService>().Current);
             services.AddSingleton<Func<LoginViewModel>>(sp => () => new(sp.GetRequiredService<IAuthService>()));
-
+            services.AddSingleton<Func<IEnumerable<Item>, ReviewViewModel>>(sp => items => new(sp.GetRequiredService<IPricingService>(), items));
             //build
             ServiceProvider = services.BuildServiceProvider();
 

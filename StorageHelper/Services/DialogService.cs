@@ -1,4 +1,4 @@
-﻿using StorageHelper.Models.Bases;
+﻿using StorageHelper.ViewModels.Bases;
 using StorageHelper.Views;
 using System.Windows;
 

@@ -1,8 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using StorageHelper.Models;
-using StorageHelper.Models.Bases;
 using StorageHelper.Services;
+using StorageHelper.ViewModels.Bases;
 
 namespace StorageHelper.ViewModels
 {
@@ -62,7 +63,6 @@ namespace StorageHelper.ViewModels
             {
                 _currentItem!.Name = Name!;
                 _currentItem.CurrentOnStorage = CurrentOnStorage;
-                _currentItem.Sku = Sku;
                 _currentItem.Notes = Notes;
                 _currentItem.Vendor = Vendor;
                 _currentItem.IsActive = IsActive;
@@ -71,9 +71,8 @@ namespace StorageHelper.ViewModels
             }
             else
             {
-                Item item = new Item() { Name = Name! };
+                Item item = new Item() { Name = Name!, Sku = Sku! };
                 item.CurrentOnStorage = CurrentOnStorage;
-                item.Sku = Sku;
                 item.Notes = Notes;
                 item.Vendor = Vendor;
                 item.IsActive = IsActive;

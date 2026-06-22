@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using StorageHelper.Models;
 
 namespace StorageHelper.Services
@@ -16,10 +17,12 @@ namespace StorageHelper.Services
     public class SqliteDataBase : IDataBaseService
     {
         private readonly IDbContextFactory<StorageContext> _dbContext;
+        private readonly ILogger<SqliteDataBase> _logger;
 
-        public SqliteDataBase(IDbContextFactory<StorageContext> dbContext)
+        public SqliteDataBase(IDbContextFactory<StorageContext> dbContext, ILogger<SqliteDataBase> logger)
         {
             _dbContext = dbContext;
+            _logger = logger;
         }
 
         public async Task<bool> AddItem(Item item)
@@ -34,6 +37,11 @@ namespace StorageHelper.Services
             }
             catch (DbUpdateException ex) when (ex.InnerException is SqliteException { SqliteExtendedErrorCode: 2067 })
             {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AddItem - {Sku}", item.Sku);
                 return false;
             }
         }
@@ -53,8 +61,9 @@ namespace StorageHelper.Services
                 }
                 return false;
             }
-            catch (DbUpdateException)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DeleteItem id is - {itemId}", itemId);
                 return false;
             }
         }
@@ -87,13 +96,25 @@ namespace StorageHelper.Services
             {
                 return false;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdateItem - {Sku}", item.Sku);
+                return false;
+            }
         }
 
         public async Task<IEnumerable<Item>> GetItemsList()
         {
-            using var db = await _dbContext.CreateDbContextAsync();
-
-            return await db.Items.Include(i => i.PriceRecords).ToListAsync();
+            try
+            {
+                using var db = await _dbContext.CreateDbContextAsync();
+                return await db.Items.Include(i => i.PriceRecords).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetItemsList");
+                return Enumerable.Empty<Item>();
+            }
         }
 
         public async Task<bool> SetIsActive(int itemId, bool active)
@@ -111,8 +132,9 @@ namespace StorageHelper.Services
                 }
                 return false;
             }
-            catch (DbUpdateException)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AddSetIsActiveItem id is - {itemId}", itemId);
                 return false;
             }
         }

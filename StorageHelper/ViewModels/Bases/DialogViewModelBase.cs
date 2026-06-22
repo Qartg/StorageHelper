@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StorageHelper.Models.Bases
+namespace StorageHelper.ViewModels.Bases
 {
     public class DialogViewModelBase : ObservableObject
     {

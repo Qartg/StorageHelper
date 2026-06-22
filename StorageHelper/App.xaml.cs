@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
 using StorageHelper.Models;
 using StorageHelper.Services;
+using StorageHelper.Services.Automation;
 using StorageHelper.Services.Data;
 using StorageHelper.ViewModels;
 using System.Windows;
-using System.Windows.Controls.Primitives;
 
 namespace StorageHelper
 {
@@ -20,8 +22,13 @@ namespace StorageHelper
         {
             base.OnStartup(e);
 
-            var services = new ServiceCollection();
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.File("logs\\log-.txt", rollingInterval: RollingInterval.Day, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Debug()
+                .CreateLogger();
 
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddSerilog(dispose: true));
             //Config
             services.AddSingleton<IConfigService, ConfigService>(sp =>{
                 var cfg = new ConfigService("Config/Config.json");
@@ -37,22 +44,31 @@ namespace StorageHelper
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IPricingService, PricingService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IVendorAutomation, OzonAutomation>();
             //vm windows
             services.AddSingleton<StorageViewModel>();
             services.AddSingleton<MainWindow>();
             //factory
             services.AddSingleton<Func<Item, ItemCardViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(),
-                item, sp.GetRequiredService<IPricingService>()));
+                item, sp.GetRequiredService<IPricingService>(), sp.GetRequiredService<ILogger<ItemCardViewModel>>()));
             services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
             services.AddSingleton<Func<AppSettings>>(sp => () => sp.GetRequiredService<IConfigService>().Current);
             services.AddSingleton<Func<LoginViewModel>>(sp => () => new(sp.GetRequiredService<IAuthService>()));
-            services.AddSingleton<Func<IEnumerable<Item>, ReviewViewModel>>(sp => items => new(sp.GetRequiredService<IPricingService>(), items));
+            services.AddSingleton<Func<IEnumerable<ReviewLine>, decimal?, ReviewViewModel>>((sp) => (lines, total) => new(sp.GetRequiredService<IPricingService>(), lines, total));
+            services.AddSingleton<Func<IEnumerable<ReviewLine>, AutomationViewModel>>(sp =>
+                new Func<IEnumerable<ReviewLine>, AutomationViewModel>(items =>
+                    new AutomationViewModel(
+                        sp.GetRequiredService<IVendorAutomation>(),
+                        sp.GetRequiredService<IPricingService>(),
+                        sp.GetRequiredService<ILogger<AutomationViewModel>>(),
+                        items
+                    )));
             //build
             ServiceProvider = services.BuildServiceProvider();
 
             MigrageDataBase();
 
-            var db = ServiceProvider.GetRequiredService<IDbContextFactory<StorageContext>>().CreateDbContext();
+            using var db = ServiceProvider.GetRequiredService<IDbContextFactory<StorageContext>>().CreateDbContext();
             if (!db.Items.Any())
             {
                 db.Items.AddRange(new List<Item>

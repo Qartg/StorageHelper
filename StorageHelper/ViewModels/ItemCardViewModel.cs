@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using StorageHelper.Models;
 using StorageHelper.Services;
 using StorageHelper.Utility;
@@ -12,6 +13,7 @@ namespace StorageHelper.ViewModels
         private Item _currentItem;
         private IDataBaseService _dataBase;
         private IPricingService _pricingService;
+        private ILogger<ItemCardViewModel> _logger;
 
         private readonly Debouncer _debouncer = new(TimeSpan.FromMilliseconds(1500));
 
@@ -33,11 +35,12 @@ namespace StorageHelper.ViewModels
         public bool IsPriceDown => PriceChangePercent < 0;
         public bool IsLowStock => _currentItem.CurrentOnStorage < _currentItem.ParLevel;
 
-        public ItemCardViewModel(IDataBaseService dataBase, Item item, IPricingService pricingService)
+        public ItemCardViewModel(IDataBaseService dataBase, Item item, IPricingService pricingService, ILogger<ItemCardViewModel> logger)
         {
             _dataBase = dataBase;
             _currentItem = item;
             _pricingService = pricingService;
+            _logger = logger;
 
             CurrentOnStorage = item.CurrentOnStorage;
 
@@ -63,7 +66,7 @@ namespace StorageHelper.ViewModels
         {
             _debouncer.Run(
                 async (token) => await _dataBase.UpdateItem(_currentItem),
-                (ex) => Application.Current.Dispatcher.Invoke(() => throw ex)
+                (ex) => _logger.LogError(ex, "Error in debouncer save item, {Sku}", Item.Sku)
                 );
         }
 

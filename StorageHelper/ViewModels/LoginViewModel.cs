@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StorageHelper.Models.Bases;
 using StorageHelper.Services;
+using StorageHelper.ViewModels.Bases;
 
 namespace StorageHelper.ViewModels
 {

@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using StorageHelper.Models;
 
 namespace StorageHelper.Services.Data
 {

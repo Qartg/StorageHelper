@@ -13,11 +13,13 @@ namespace StorageHelper.ViewModels
     {
         private IDataBaseService _dataBase;
         private IDialogService _dialogService;
+        private IPricingService _pricingService;
 
         private Func<Item, ItemCardViewModel> _loadCardFactory;
         private Func<Item?, ItemEditViewModel> _editCardFactory;
         private Func<LoginViewModel> _loginFactory;
-        private Func<IEnumerable<Item>, ReviewViewModel> _reviewFactory;
+        private Func<IEnumerable<ReviewLine>, decimal?, ReviewViewModel> _reviewFactory;
+        private Func<IEnumerable<ReviewLine>, AutomationViewModel> _automationFactory;
 
         private ICollectionView _view;
 
@@ -27,18 +29,21 @@ namespace StorageHelper.ViewModels
         [ObservableProperty] private bool _showInactive;
 
         public StorageViewModel(IDataBaseService dataBase, 
+            IDialogService dialogService, IPricingService pricingService,
             Func<Item, ItemCardViewModel> loadCardFactory,
             Func<Item?, ItemEditViewModel> editCardFactory,
-            IDialogService dialogService,
             Func<LoginViewModel> loginFactory,
-            Func<IEnumerable<Item>, ReviewViewModel> reviewFactory)
+            Func<IEnumerable<ReviewLine>, decimal?, ReviewViewModel> reviewFactory,
+            Func<IEnumerable<ReviewLine>, AutomationViewModel> automationFactory)
         {
             _dataBase = dataBase;
+            _dialogService = dialogService;
+            _pricingService = pricingService;
             _loadCardFactory = loadCardFactory;
             _editCardFactory = editCardFactory;
-            _dialogService = dialogService;
             _loginFactory = loginFactory;
             _reviewFactory = reviewFactory;
+            _automationFactory = automationFactory;
 
             _view = CollectionViewSource.GetDefaultView(StorageItems);
             AddFilter();
@@ -96,11 +101,14 @@ namespace StorageHelper.ViewModels
         [RelayCommand]
         private async Task ReviewAsync()
         {
-            var vm = _reviewFactory(await _dataBase.GetItemsList());
+            (IEnumerable<ReviewLine> lines, decimal? total) = _pricingService.BuildReview(await _dataBase.GetItemsList());
+
+            var vm = _reviewFactory(lines, total);
             if (_dialogService.ShowDialog(vm) == true)
-                MessageBox.Show("order");
-            else
-                MessageBox.Show("cancel");
+            {
+                var automationVm = _automationFactory(lines);
+                _dialogService.ShowDialog(automationVm);
+            }
         }
 
         private void StorageItems_Clear()

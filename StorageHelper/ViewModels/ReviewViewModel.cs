@@ -1,8 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StorageHelper.Models;
-using StorageHelper.Models.Bases;
 using StorageHelper.Services;
+using StorageHelper.ViewModels.Bases;
 using System.Collections.ObjectModel;
 
 namespace StorageHelper.ViewModels
@@ -13,10 +13,10 @@ namespace StorageHelper.ViewModels
 
         public decimal? Total { get; set; }
 
-        public ReviewViewModel(IPricingService pricingService, IEnumerable<Item> items)
+        public ReviewViewModel(IPricingService pricingService, IEnumerable<ReviewLine> items, decimal? total)
         {
-            (IEnumerable<ReviewLine> enumLines, Total) = pricingService.BuildReview(items);
-            Lines = new(enumLines);
+            Lines = new(items);
+            Total = total;
         }
 
         [RelayCommand]

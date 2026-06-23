@@ -22,22 +22,20 @@ namespace StorageHelper.ViewModels
             Message = message;
         }
 
-        public AutomationLineViewModel(GetItemInfoResult result)
+        public void UpdateFieldsByAddCart(AddToCartResult result)
+        {
+            Status = result.Success ? AutomationStatus.Success : AutomationStatus.Failed;
+            Sku = result.Sku;
+
+            Message = result.Message;
+        }
+
+        public void UpdateFieldsByGetInfo(GetItemInfoResult result)
         {
             Status = result.Success && result.IsOrderable == true ? AutomationStatus.Running : AutomationStatus.Failed;
             Title = result.Name;
             Sku = result.Sku;
             CapturedPrice = result.Price;
-            Message = result.Message;
-        }
-
-        public void UpdateFieldsByAddCart(AddToCartResult result)
-        {
-            Status = result.Success ? AutomationStatus.Success : AutomationStatus.Failed;
-
-            Title = result.ProductTitle ?? Title;
-            Sku = result.Sku;
-            CapturedPrice = result.CapturedPrice ?? CapturedPrice;
             Message = result.Message;
         }
     }

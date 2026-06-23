@@ -587,3 +587,6 @@ FodyWeavers.xsd
 # Working/planning docs — kept local, not part of the portfolio repo (README stays tracked)
 *.md
 !README.md
+
+# Local throwaway git log dump
+git_log.txt

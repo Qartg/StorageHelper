@@ -28,10 +28,10 @@ namespace StorageHelper.Services.Automation
             if(Random.Shared.Next(5) == 0)
             {
                 _logger.LogWarning("Error add item to cart, {sku}", sku);
-                return new AddToCartResult(sku, false, null, null, "Добавление в корзину не удалось");
+                return new AddToCartResult(sku, false, "Добавление в корзину не удалось");
             }
 
-            return new AddToCartResult(sku, true, 800m, _names[Random.Shared.Next(0, _names.Count)], "Добавление в корзину успешно");
+            return new AddToCartResult(sku, true, "Добавление в корзину успешно");
         }
 
         public async Task<GetItemInfoResult> GetItemInfo(string sku, CancellationToken ct = default)

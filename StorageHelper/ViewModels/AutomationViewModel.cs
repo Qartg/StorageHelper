@@ -67,14 +67,14 @@ namespace StorageHelper.ViewModels
 
                 foreach (var item in _orderLines)
                 {
-                    AutomationLineViewModel curLine = new(AutomationStatus.Failed, item.Name, item.Sku, item.CurrentPrice, "Ошибка при добавлении");
+                    AutomationLineViewModel curLine = new(AutomationStatus.Running, item.Name, item.Sku, item.CurrentPrice, "Начинаю работу");
+                    Log.Add(curLine);
                     try
                     {
                         if (_cts.IsCancellationRequested) break;
 
                         var actualInfo = await _automation.GetItemInfo(item.Sku, _cts.Token);
-                        curLine = new(actualInfo);
-                        Log.Add(curLine);
+                        curLine.UpdateFieldsByGetInfo(actualInfo);
 
                         if (curLine.Status == AutomationStatus.Failed)
                         {
@@ -95,8 +95,10 @@ namespace StorageHelper.ViewModels
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
+                        curLine.Status = AutomationStatus.Failed;
+                        curLine.Message = "Произошла ошибка";
+
                         FailedCount++;
-                        Log.Add(curLine);
                         _logger.LogError(ex, "Error in Automation RunCommand, {Sku}", item.Sku);
                     }
                 }

@@ -588,5 +588,4 @@ FodyWeavers.xsd
 *.md
 !README.md
 
-# Local throwaway git log dump
-git_log.txt
+.editorconfig

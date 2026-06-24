@@ -11,8 +11,8 @@
         public string? ImageURL { get; set; }
         public int ParLevel { get; set; }
         public int CurrentOnStorage { get; set; }
-        public bool IsActive { get; set; }
-        public bool IsOredrable { get; set; } = true;
+        public bool IsActive { get; set; } = true;
+        public bool IsOrderable { get; set; } = true;
 
         public List<PriceRecord> PriceRecords { get; } = new();
     }

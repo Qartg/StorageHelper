@@ -2,7 +2,6 @@
 
 namespace StorageHelper.Services
 {
-
     public interface IPricingService
     {
         PriceStats CalculateStats(IEnumerable<PriceRecord> records);
@@ -15,6 +14,7 @@ namespace StorageHelper.Services
 
     public class PricingService : IPricingService
     {
+        //O(N)
         public PriceStats CalculateStats(IEnumerable<PriceRecord> records)
         {
             PriceRecord? most = null;
@@ -51,7 +51,7 @@ namespace StorageHelper.Services
             foreach (Item item in items)
             {
                 int quantity = ToOrder(item.CurrentOnStorage, item.ParLevel);
-                if (!item.IsActive || quantity == 0 || !item.IsOredrable) continue;
+                if (!item.IsActive || quantity == 0 || !item.IsOrderable) continue;
 
                 PriceStats stats = CalculateStats(item.PriceRecords);
                 decimal? changes = IncreaseVsPrevious(stats.Current, stats.Previous);

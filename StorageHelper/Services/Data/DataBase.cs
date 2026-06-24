@@ -10,6 +10,7 @@ namespace StorageHelper.Services
         public Task<IEnumerable<Item>> GetItemsList();
         public Task<bool> AddItem(Item item);
         public Task<bool> UpdateItem(Item item);
+        public Task<bool> AddPriceRecord(int itemId, decimal price, DateTime capturedAt);
         public Task<bool> SetIsActive(int itemId, bool active);
         public Task<bool> DeleteItem(int itemId);
     }
@@ -41,7 +42,7 @@ namespace StorageHelper.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in AddItem - {Sku}", item.Sku);
+                _logger.LogError(ex, "Ошибка в AddItem - {Sku}", item.Sku);
                 return false;
             }
         }
@@ -63,7 +64,7 @@ namespace StorageHelper.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DeleteItem id is - {itemId}", itemId);
+                _logger.LogError(ex, "Ошибка в DeleteItem id is - {itemId}", itemId);
                 return false;
             }
         }
@@ -86,7 +87,7 @@ namespace StorageHelper.Services
                     ctxItem.ParLevel = item.ParLevel;
                     ctxItem.CurrentOnStorage = item.CurrentOnStorage;
                     ctxItem.IsActive = item.IsActive;
-                    ctxItem.IsOredrable = item.IsOredrable;
+                    ctxItem.IsOrderable = item.IsOrderable;
                     await db.SaveChangesAsync();
                     return true;
                 }
@@ -98,7 +99,7 @@ namespace StorageHelper.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in UpdateItem - {Sku}", item.Sku);
+                _logger.LogError(ex, "Ошибка в UpdateItem - {Sku}", item.Sku);
                 return false;
             }
         }
@@ -112,7 +113,7 @@ namespace StorageHelper.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetItemsList");
+                _logger.LogError(ex, "Ошибка в GetItemsList");
                 return Enumerable.Empty<Item>();
             }
         }
@@ -134,9 +135,21 @@ namespace StorageHelper.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in AddSetIsActiveItem id is - {itemId}", itemId);
+                _logger.LogError(ex, "Ошибка в AddSetIsActiveItem id - {itemId}", itemId);
                 return false;
             }
+        }
+
+        public async Task<bool> AddPriceRecord(int itemId, decimal price, DateTime capturedAt)
+        {
+            try
+            {
+                using var db = await _dbContext.CreateDbContextAsync();
+                db.Set<PriceRecord>().Add(new PriceRecord { ItemId = itemId, Price = price, CapturedAt = capturedAt });
+                await db.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex) { _logger.LogError(ex, "Ошибка в AddPriceRecord - {itemId}", itemId); return false; }
         }
     }
 }

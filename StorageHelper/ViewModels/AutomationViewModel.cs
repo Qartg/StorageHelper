@@ -20,6 +20,11 @@ namespace StorageHelper.ViewModels
         [NotifyCanExecuteChangedFor(nameof(StopCommand))] 
         private bool _isRunning;
 
+        [ObservableProperty] private bool _isAwaitingLogin;
+
+        [ObservableProperty] private string? _resultBanner;
+        [ObservableProperty] private bool _resultIsError;
+
         private IEnumerable<ReviewLine> _orderLines;
         private CancellationTokenSource _cts = new();
 
@@ -58,12 +63,18 @@ namespace StorageHelper.ViewModels
         {
             try
             {
+
                 IsRunning = true;
 
                 _cts = new();
                 Log.Clear();
                 SucceededCount = 0;
                 FailedCount = 0;
+                ResultBanner = null;
+
+                var progress = new Progress<AuthPhase>(phase => IsAwaitingLogin = phase == AuthPhase.AwaitingLogin);
+                if (!await _automation.ConnectAsync(progress, _cts.Token))
+                    return;
 
                 foreach (var item in _orderLines)
                 {
@@ -71,8 +82,7 @@ namespace StorageHelper.ViewModels
                     Log.Add(curLine);
                     try
                     {
-                        if (_cts.IsCancellationRequested) break;
-
+                        _cts.Token.ThrowIfCancellationRequested();
                         var actualInfo = await _automation.GetItemInfo(item.Sku, _cts.Token);
                         curLine.UpdateFieldsByGetInfo(actualInfo);
 
@@ -82,6 +92,7 @@ namespace StorageHelper.ViewModels
                             continue;
                         }
 
+                        _cts.Token.ThrowIfCancellationRequested();
                         var cartResult = await _automation.AddItemToCart(item.Sku,
                             item.Quantity,
                             _cts.Token);
@@ -99,17 +110,22 @@ namespace StorageHelper.ViewModels
                         curLine.Message = "Произошла ошибка";
 
                         FailedCount++;
-                        _logger.LogError(ex, "Error in Automation RunCommand, {Sku}", item.Sku);
+                        _logger.LogError(ex, "Ошибка в RunCommand, {Sku}", item.Sku);
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-
+                ResultBanner = "Сборка остановлена";
             }
             finally
             {
+                ResultIsError = SucceededCount == 0;
+                if(ResultBanner == null)
+                    ResultBanner = !ResultIsError ? "Корзина собрана. Проверьте её и оформите заказ вручную на сайте" : "Не удалось собрать корзину. Подробности в логе";
+
                 IsRunning = false;
+                IsAwaitingLogin = false;
             }
         }
 

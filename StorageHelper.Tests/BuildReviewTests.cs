@@ -1,4 +1,4 @@
-using StorageHelper.Models;
+﻿using StorageHelper.Models;
 using StorageHelper.Services;
 
 namespace StorageHelper.Tests
@@ -7,8 +7,6 @@ namespace StorageHelper.Tests
     {
         private readonly PricingService _sut = new();
 
-        // Хелпер: строит товар с историей цен.
-        // prices — пары (цена, дата); остальное с дефолтами, чтобы в тесте писать только нужное.
         private static Item MakeItem(string name, int parLevel, int stock,
             bool active = true, bool orderable = true,
             params (decimal price, DateTime date)[] prices)
@@ -20,7 +18,7 @@ namespace StorageHelper.Tests
                 ParLevel = parLevel,
                 CurrentOnStorage = stock,
                 IsActive = active,
-                IsOredrable = orderable
+                IsOrderable = orderable
             };
             foreach (var (price, date) in prices)
                 item.PriceRecords.Add(new PriceRecord { Price = price, CapturedAt = date });
@@ -30,16 +28,15 @@ namespace StorageHelper.Tests
         [Fact]
         public void BuildReview_ReorderableItem_LineHasReorderQtyAndTotal()
         {
-            // склад 3, цель 10 → дозаказать 7; цена 20 → строка 140
             var items = new[]
             {
                 MakeItem("A", parLevel: 10, stock: 3, prices: (20m, new DateTime(2026, 1, 1)))
             };
 
             var (lines, total) = _sut.BuildReview(items);
-            var line = Assert.Single(lines);          // ровно одна строка
+            var line = Assert.Single(lines);        
 
-            Assert.Equal(7, line.Quantity);           // кол-во к ЗАКАЗУ, не остаток
+            Assert.Equal(7, line.Quantity);
             Assert.Equal(20m, line.CurrentPrice);
             Assert.Equal(140m, line.LineTotal);
             Assert.Equal(140m, total);
@@ -74,15 +71,15 @@ namespace StorageHelper.Tests
         {
             var items = new[]
             {
-                MakeItem("A", 10, 3, prices: (20m, new DateTime(2026, 1, 1))),   // строка 7×20=140
-                MakeItem("B", 10, 0)                                            // цен нет
+                MakeItem("A", 10, 3, prices: (20m, new DateTime(2026, 1, 1))),   
+                MakeItem("B", 10, 0)                                         
             };
 
             var (lines, total) = _sut.BuildReview(items);
 
             Assert.Equal(2, lines.Count());
             Assert.Contains(lines, l => l.Name == "B" && l.CurrentPrice == null && l.LineTotal == null);
-            Assert.Equal(140m, total);   // B в сумму не попал
+            Assert.Equal(140m, total);   
         }
 
         [Fact]

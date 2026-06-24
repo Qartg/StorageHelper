@@ -12,10 +12,6 @@ namespace StorageHelper
         {
             InitializeComponent();
             DataContext = vm;
-            
-            
         }
-
-
     }
 }

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using StorageHelper.Models;
 using StorageHelper.Services;
 using StorageHelper.Utility;
-using System.Windows;
 
 namespace StorageHelper.ViewModels
 {
@@ -23,7 +22,7 @@ namespace StorageHelper.ViewModels
         public string? Vendor => _currentItem.Vendor;
         public string? ImageURL => _currentItem.ImageURL;
         public int ParLevel => _currentItem.ParLevel;
-        public bool IsOrderable => _currentItem.IsOredrable;
+        public bool IsOrderable => _currentItem.IsOrderable;
         public Item Item => _currentItem;
 
         [ObservableProperty] private int _currentOnStorage;
@@ -66,7 +65,7 @@ namespace StorageHelper.ViewModels
         {
             _debouncer.Run(
                 async (token) => await _dataBase.UpdateItem(_currentItem),
-                (ex) => _logger.LogError(ex, "Error in debouncer save item, {Sku}", Item.Sku)
+                (ex) => _logger.LogError(ex, "Ошибка при сохранении в debouncer, {Sku}", Item.Sku)
                 );
         }
 

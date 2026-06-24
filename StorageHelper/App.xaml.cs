@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Events;
 using StorageHelper.Models;
 using StorageHelper.Services;
 using StorageHelper.Services.Automation;
@@ -23,35 +25,38 @@ namespace StorageHelper
             base.OnStartup(e);
 
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.File("logs\\log-.txt", rollingInterval: RollingInterval.Day, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+                .WriteTo.File("logs\\log-.txt",
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
                 .WriteTo.Debug()
                 .CreateLogger();
+
+            var cfg = new ConfigService("Config/Config.json");
+            cfg.Load();
 
             var services = new ServiceCollection();
             services.AddLogging(b => b.AddSerilog(dispose: true));
             //Config
-            services.AddSingleton<IConfigService, ConfigService>(sp =>{
-                var cfg = new ConfigService("Config/Config.json");
-                cfg.Load();
-                return cfg;
-            });
+            services.AddSingleton<IConfigService, ConfigService>(sp => cfg);
             //Db
-            services.AddDbContextFactory<StorageContext>((sp, opt) => 
-            opt.UseSqlite(sp.GetRequiredService<IConfigService>().Current.ConnectionString)
-            );
+            services.AddDbContextFactory<StorageContext>((sp, opt) => opt.UseSqlite(cfg.Current.ConnectionString));
             //services
             services.AddSingleton<IDataBaseService, SqliteDataBase>();
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IPricingService, PricingService>();
             services.AddSingleton<IDialogService, DialogService>();
-            services.AddSingleton<IVendorAutomation, OzonAutomation>();
+
+            var type = cfg.Current.FakeAutomation ? typeof(FakeVendorAutomation) : typeof(OzonAutomation);
+            services.AddSingleton(typeof(IVendorAutomation), type);
             //vm windows
             services.AddSingleton<StorageViewModel>();
             services.AddSingleton<MainWindow>();
             //factory
             services.AddSingleton<Func<Item, ItemCardViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(),
                 item, sp.GetRequiredService<IPricingService>(), sp.GetRequiredService<ILogger<ItemCardViewModel>>()));
-            services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item));
+            services.AddSingleton<Func<Item?, ItemEditViewModel>>(sp => item => new(sp.GetRequiredService<IDataBaseService>(), item, sp.GetRequiredService<IVendorAutomation>(), sp.GetRequiredService<IPricingService>()));
             services.AddSingleton<Func<AppSettings>>(sp => () => sp.GetRequiredService<IConfigService>().Current);
             services.AddSingleton<Func<LoginViewModel>>(sp => () => new(sp.GetRequiredService<IAuthService>()));
             services.AddSingleton<Func<IEnumerable<ReviewLine>, decimal?, ReviewViewModel>>((sp) => (lines, total) => new(sp.GetRequiredService<IPricingService>(), lines, total));
@@ -66,9 +71,10 @@ namespace StorageHelper
             //build
             ServiceProvider = services.BuildServiceProvider();
 
-            MigrageDataBase();
-
             using var db = ServiceProvider.GetRequiredService<IDbContextFactory<StorageContext>>().CreateDbContext();
+            db.Database.Migrate();
+
+            //TODO: убрать
             if (!db.Items.Any())
             {
                 db.Items.AddRange(new List<Item>
@@ -84,7 +90,7 @@ namespace StorageHelper
                         ParLevel = 10,
                         CurrentOnStorage = 12,
                         IsActive = true,
-                        IsOredrable = false,
+                        IsOrderable = false,
                         PriceRecords =
                         {
                             new PriceRecord { Price = 12500.00m, CapturedAt = new DateTime(2026, 01, 10) },
@@ -104,7 +110,7 @@ namespace StorageHelper
                         ParLevel = 15,
                         CurrentOnStorage = 8,
                         IsActive = true,
-                        IsOredrable = true,
+                        IsOrderable = true,
                         PriceRecords =
                         {
                             new PriceRecord { Price = 5400.00m, CapturedAt = new DateTime(2026, 01, 15) },
@@ -124,7 +130,7 @@ namespace StorageHelper
                         ParLevel = 30,
                         CurrentOnStorage = 45,
                         IsActive = true,
-                        IsOredrable = true,
+                        IsOrderable = true,
                         PriceRecords =
                         {
                             new PriceRecord { Price = 1850.00m, CapturedAt = new DateTime(2026, 02, 01) },
@@ -145,7 +151,7 @@ namespace StorageHelper
                         ParLevel = 20,
                         CurrentOnStorage = 5,
                         IsActive = true,
-                        IsOredrable = true,
+                        IsOrderable = true,
                         PriceRecords =
                         {
                             new PriceRecord { Price = 3200.00m, CapturedAt = new DateTime(2026, 01, 20) },
@@ -165,7 +171,7 @@ namespace StorageHelper
                         ParLevel = 50,
                         CurrentOnStorage = 120,
                         IsActive = true,
-                        IsOredrable = true,
+                        IsOrderable = true,
                         PriceRecords =
                         {
                             new PriceRecord { Price = 850.00m, CapturedAt = new DateTime(2026, 01, 05) },
@@ -180,12 +186,6 @@ namespace StorageHelper
 
             var window = ServiceProvider.GetRequiredService<MainWindow>();
             window.Show();
-        }
-
-        private void MigrageDataBase()
-        {
-            using var db = ServiceProvider.GetRequiredService<IDbContextFactory<StorageContext>>().CreateDbContext();
-            db.Database.Migrate();
         }
 
     }

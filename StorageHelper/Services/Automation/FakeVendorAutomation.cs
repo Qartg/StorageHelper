@@ -34,6 +34,12 @@ namespace StorageHelper.Services.Automation
             return new AddToCartResult(sku, true, "Добавление в корзину успешно");
         }
 
+        public Task<bool> ConnectAsync(IProgress<AuthPhase> progress, CancellationToken ct = default)
+        {
+            progress.Report(AuthPhase.Ready); 
+            return Task.FromResult(true);
+        }
+
         public async Task<GetItemInfoResult> GetItemInfo(string sku, CancellationToken ct = default)
         {
             await Task.Delay(Random.Shared.Next(800, 1200), ct);

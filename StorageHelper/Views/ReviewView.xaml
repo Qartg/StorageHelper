@@ -8,13 +8,11 @@
              d:DesignWidth="560">
 
     <Border Background="{StaticResource CardBackgroundBrush}" Width="560" Padding="24,20">
-        <!-- IsSharedSizeScope: колонки строк и шапки выравниваются по общим группам -->
         <DockPanel Grid.IsSharedSizeScope="True">
 
             <TextBlock DockPanel.Dock="Top" Text="Сводка заказа"
                        Style="{StaticResource HeaderTitleText}" Margin="0,0,0,14"/>
 
-            <!-- Итог + кнопки (внизу) -->
             <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
                 <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="Bold"
                            Foreground="{StaticResource TextPrimaryBrush}"
@@ -27,7 +25,6 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Шапка таблицы -->
             <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -45,7 +42,6 @@
 
             <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource CardBorderBrush}"/>
 
-            <!-- Список строк -->
             <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Lines}">
                     <ItemsControl.ItemTemplate>
@@ -61,7 +57,6 @@
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="C_Total"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Товар: название + SKU -->
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitleText}" FontSize="13"/>
                                         <TextBlock Text="{Binding Sku, StringFormat='SKU: {0}'}"

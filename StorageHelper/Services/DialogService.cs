@@ -13,7 +13,7 @@ namespace StorageHelper.Services
     {
         public bool? ShowDialog(object viewModel)
         {
-            var window = new DIalogView()
+            var window = new DialogView()
             {
                 DataContext = viewModel,
                 Owner = Application.Current.MainWindow
@@ -22,8 +22,8 @@ namespace StorageHelper.Services
             if(viewModel is DialogViewModelBase vm)
             {
                 void Handler(bool? result) => window.DialogResult = result;
-                vm.CloseRequsted += Handler;
-                window.Closed += (_, _) => vm.CloseRequsted -= Handler;
+                vm.CloseRequested += Handler;
+                window.Closed += (_, _) => vm.CloseRequested -= Handler;
             }
 
             return window.ShowDialog();

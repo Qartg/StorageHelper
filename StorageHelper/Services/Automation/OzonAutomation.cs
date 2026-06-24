@@ -7,7 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
-using System.Xml.Linq;
 
 namespace StorageHelper.Services.Automation
 {
@@ -24,6 +23,8 @@ namespace StorageHelper.Services.Automation
         public IPage Page => _page ?? throw new InvalidOperationException("Страница не загружена");
 
         private const string OZON_BASE_LINK = "https://www.ozon.ru/";
+
+        private readonly string ProfilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OzonBrowserProfile");
 
         public OzonAutomation(ILogger<OzonAutomation> logger)
         {
@@ -123,7 +124,12 @@ namespace StorageHelper.Services.Automation
 
             var toCartButton = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = "В корзину" });
             if (await toCartButton.CountAsync() > 0)
-                await toCartButton.ClickAsync();
+            {
+                await Page.RunAndWaitForResponseAsync(async () =>
+                {
+                    await toCartButton.ClickAsync();
+                }, resp => resp.Url.Contains("addToCart") && resp.Status == 200);
+            }
 
             var inCartBtn = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = "В корзине" });
             await inCartBtn.WaitForAsync(new() { Timeout = 10000 });
@@ -147,31 +153,31 @@ namespace StorageHelper.Services.Automation
             return new OzonLd(sku, name, desc, price, image);
         }
 
-        //TODO: port using 0 in argument
-        private async Task<bool> EnsureStartedAsync(CancellationToken ct = default)
+        private async Task<bool> EnsureStartedAsync(CancellationToken ct = default, IProgress<AuthPhase>? progress = null)
         {
             try
             {
                 if (_ready && _page != null) return true;
                 _pw ??= await Playwright.CreateAsync();
 
-                if(!await WaitForCDPAsync(9222, ct, 5))
+                if(await WaitForCDPAsync(ct, 2.5) == null)
                     TryStartBrowser();
 
-                if (await WaitForCDPAsync(9222, ct))
+                if (await WaitForCDPAsync(ct) is int port)
                 {
-                    _browser ??= await _pw.Chromium.ConnectOverCDPAsync("http://127.0.0.1:9222");
+                    _browser ??= await _pw.Chromium.ConnectOverCDPAsync($"http://127.0.0.1:{port}");
                     var ctx = _browser.Contexts.Count > 0 ? _browser.Contexts[0] : await _browser.NewContextAsync();
                     _page = ctx.Pages.Count > 0 ? ctx.Pages[0] : await ctx.NewPageAsync();
                     _browser.Disconnected += BrowserDisconnected;
+                    ctx.SetDefaultTimeout(10000f);
 
-                    await EnsureLoggedInAsync(ct);
+                    await EnsureLoggedInAsync(ct, progress);
                     _ready = true;
 
                     return true;
                 }
                 else
-                    _logger.LogError("CDP не поднялся в течении 15 секунд");
+                    _logger.LogError("CDP не поднялся в течение 15 секунд");
 
                 _ready = false;
                 return false;
@@ -191,7 +197,7 @@ namespace StorageHelper.Services.Automation
             _browser = null;
         }
 
-        private async Task EnsureLoggedInAsync(CancellationToken ct = default)
+        private async Task EnsureLoggedInAsync(CancellationToken ct = default, IProgress<AuthPhase>? progress = null)
         {
             await OpenAsync(OZON_BASE_LINK);
 
@@ -201,13 +207,16 @@ namespace StorageHelper.Services.Automation
             {
                 await loginBtn.ClickAsync();
                 _logger.LogInformation("Жду авторизации на сайте");
-                //TODO: state or noty
+                progress?.Report(AuthPhase.AwaitingLogin);
                 var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(5);
                 
                 while (deadline > DateTime.UtcNow)
                 {
                     if (!await loginBtn.IsVisibleAsync())
+                    {
+                        progress?.Report(AuthPhase.Ready);
                         return;
+                    }
 
                     await Task.Delay(1000, ct);
                 }
@@ -216,39 +225,61 @@ namespace StorageHelper.Services.Automation
             }
         }
 
-        private static async Task<bool> WaitForCDPAsync(int port, CancellationToken ct = default, double waitTime = 15)
+        private async Task<int?> WaitForCDPAsync(CancellationToken ct = default, double waitTime = 15)
         {
             using var http = new HttpClient() { Timeout = TimeSpan.FromSeconds(2) };
             var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(waitTime);
 
             while(DateTime.UtcNow < deadline)
             {
+                await Task.Delay(200, ct);
                 try
                 {
                     ct.ThrowIfCancellationRequested();
+
+                    int? port = await ReadPortFromFile();
+                    if (port == null)
+                        continue;
+
                     var response = await http.GetAsync($"http://127.0.0.1:{port}/json/version", ct);
                     if (response.IsSuccessStatusCode)
-                        return true;
+                        return port;
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
                 {
-                    if(ct.IsCancellationRequested) return false;
+                    if (ct.IsCancellationRequested) return null;
                 }
-                await Task.Delay(200, ct);
             }
 
-            return false;
+            return null;
         }
 
-        private static void TryStartBrowser()
+        private async Task<int?> ReadPortFromFile()
+        {
+            string filePath = Path.Combine(ProfilePath, "DevToolsActivePort");
+            if (File.Exists(filePath))
+            {
+                using (var fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sReader = new StreamReader(fStream))
+                {
+                    string? line;
+
+                    if ((line = await sReader.ReadLineAsync()) != null)
+                        if (int.TryParse(line, out var port))
+                            return port;
+                }
+            }
+            return null;
+        }
+
+        private void TryStartBrowser()
         {
             string? browserPath = FindBrowserPath();
 
             if (browserPath == null)
                 throw new Exception("Не удалось найти поддерживаемый браузер в системе. Для работы автоматизации нужен Chrome или Edge");
 
-            string profilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OzonBrowserProfile");
-            Directory.CreateDirectory(profilePath);
+            Directory.CreateDirectory(ProfilePath);
 
             ProcessStartInfo psi = new()
             {
@@ -256,8 +287,8 @@ namespace StorageHelper.Services.Automation
                 UseShellExecute = false,
             };
 
-            psi.ArgumentList.Add("--remote-debugging-port=9222");
-            psi.ArgumentList.Add($"--user-data-dir={profilePath}");
+            psi.ArgumentList.Add("--remote-debugging-port=0");
+            psi.ArgumentList.Add($"--user-data-dir={ProfilePath}");
 
             if(Process.Start(psi) == null)
                 throw new Exception("Не удалось запустить процесс браузера");
@@ -267,7 +298,7 @@ namespace StorageHelper.Services.Automation
         {
             string?[] candidates = new string?[]
             {
-                ReadAppPath("msedge.exe"), ReadAppPath("chrome.exe"),
+                ReadAppPath("chrome.exe"), ReadAppPath("msedge.exe"),
                 @"C:\Program Files\Google\Chrome\Application\chrome.exe",
                 @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
             };
@@ -281,7 +312,7 @@ namespace StorageHelper.Services.Automation
             {
                 if (Registry.GetValue(@$"{root}\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exeName}", null, null) is string p
                     && !string.IsNullOrEmpty(p))
-                    return p;
+                    return p.Trim('"');
             }
             return null;
         }
@@ -313,5 +344,7 @@ namespace StorageHelper.Services.Automation
             if(_browser != null) await _browser.DisposeAsync();
             if (_pw != null) _pw.Dispose();
         }
+
+        public Task<bool> ConnectAsync(IProgress<AuthPhase> progress, CancellationToken ct = default) => EnsureStartedAsync(ct, progress);
     }
 }

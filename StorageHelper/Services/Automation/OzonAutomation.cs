@@ -8,6 +8,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 
+
 namespace StorageHelper.Services.Automation
 {
     public record class OzonLd(string? Sku, string? Name, string? Description, decimal? Price, string? Image);
@@ -161,7 +162,7 @@ namespace StorageHelper.Services.Automation
                 _pw ??= await Playwright.CreateAsync();
 
                 if(await WaitForCDPAsync(ct, 2.5) == null)
-                    TryStartBrowser();
+                    await TryStartBrowser();
 
                 if (await WaitForCDPAsync(ct) is int port)
                 {
@@ -201,9 +202,9 @@ namespace StorageHelper.Services.Automation
         {
             await OpenAsync(OZON_BASE_LINK);
 
-            var loginBtn = Page.GetByText("Войти", new() { Exact = true }).First;
+            var loginBtn = Page.Locator("[data-widget='profileMenuAnonymous']").First;
 
-            if (await loginBtn.IsVisibleAsync())
+            if (await loginBtn.CountAsync() > 0)
             {
                 await loginBtn.ClickAsync();
                 _logger.LogInformation("Жду авторизации на сайте");
@@ -212,7 +213,7 @@ namespace StorageHelper.Services.Automation
                 
                 while (deadline > DateTime.UtcNow)
                 {
-                    if (!await loginBtn.IsVisibleAsync())
+                    if (await loginBtn.CountAsync() == 0)
                     {
                         progress?.Report(AuthPhase.Ready);
                         return;
@@ -272,14 +273,12 @@ namespace StorageHelper.Services.Automation
             return null;
         }
 
-        private void TryStartBrowser()
+        private async Task TryStartBrowser()
         {
             string? browserPath = FindBrowserPath();
 
             if (browserPath == null)
                 throw new Exception("Не удалось найти поддерживаемый браузер в системе. Для работы автоматизации нужен Chrome или Edge");
-
-            Directory.CreateDirectory(ProfilePath);
 
             ProcessStartInfo psi = new()
             {
@@ -287,11 +286,99 @@ namespace StorageHelper.Services.Automation
                 UseShellExecute = false,
             };
 
-            psi.ArgumentList.Add("--remote-debugging-port=0");
             psi.ArgumentList.Add($"--user-data-dir={ProfilePath}");
+            psi.ArgumentList.Add("--no-first-run");
+            psi.ArgumentList.Add("--no-default-browser-check");
+            psi.ArgumentList.Add("--disable-session-crashed-bubble");
 
-            if(Process.Start(psi) == null)
+            if (!Directory.Exists(ProfilePath))
+            {
+                psi.ArgumentList.Add(OZON_BASE_LINK);
+                var warmup = Process.Start(psi);
+                if (warmup == null)
+                    throw new Exception("Не удалось запустить процесс браузера");
+
+                await WaitForOzonCookies();
+                warmup.Kill(true);
+                await warmup.WaitForExitAsync();
+            }
+
+            psi.ArgumentList.Add("--remote-debugging-port=0");
+
+            if (Process.Start(psi) == null)
                 throw new Exception("Не удалось запустить процесс браузера");
+        }
+
+        long SafeLen(string p)
+        {
+            try { return new FileInfo(p).Length; }
+            catch { return 0; }
+        }
+        long TotalLen(string cookiesPath, string walPath) => SafeLen(cookiesPath) + SafeLen(walPath);
+
+        private async Task<bool> WaitForOzonCookies(int timeoutSeconds = 35, CancellationToken ct = default)
+        {
+            string networkDir = Path.Combine(ProfilePath, "Default", "Network");
+            string cookiesPath = Path.Combine(networkDir, "Cookies");
+            string walPath = cookiesPath + "-wal";
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(timeoutSeconds);
+
+            while (!File.Exists(cookiesPath))
+            {
+                if (DateTime.UtcNow >= deadline || ct.IsCancellationRequested)
+                    return false;
+                await Task.Delay(200, ct);
+            }
+
+            using var fsw = new FileSystemWatcher(networkDir, "Cookies*")
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                EnableRaisingEvents = true
+            };
+
+            var lastChange = DateTime.UtcNow;
+            fsw.Changed += (_, __) => lastChange = DateTime.UtcNow;
+
+            var quietWindow = TimeSpan.FromMilliseconds(1500);
+            while (DateTime.UtcNow - lastChange < quietWindow)
+            {
+                if (DateTime.UtcNow >= deadline || ct.IsCancellationRequested)
+                    return false;
+                await Task.Delay(200, ct);
+            }
+
+            long baseline = TotalLen(cookiesPath, walPath);
+
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            fsw.Changed += (_, __) =>
+            {
+                if (TotalLen(cookiesPath, walPath) > baseline)
+                    tcs.TrySetResult();
+            };
+
+            if (TotalLen(cookiesPath, walPath) > baseline)
+                tcs.TrySetResult();
+
+            var remaining = deadline - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+                return false;
+
+            try
+            {
+                await tcs.Task.WaitAsync(remaining, ct);
+                return true;
+            }
+            catch (TimeoutException)
+            {
+                if (TotalLen(cookiesPath, walPath) > baseline)
+                    return true;
+
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         private static string? FindBrowserPath()

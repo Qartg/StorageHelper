@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              d:DesignWidth="560">
 
-    <Border Background="{StaticResource CardBackgroundBrush}" Width="560" Padding="24,20">
+    <Border Background="{StaticResource HeaderBackgroundBrush}" Width="560" Padding="24,20">
         <DockPanel Grid.IsSharedSizeScope="True">
 
             <TextBlock DockPanel.Dock="Top" Text="Сводка заказа"

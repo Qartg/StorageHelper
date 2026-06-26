@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              d:DesignWidth="320">
 
-    <Border Background="{StaticResource CardBackgroundBrush}" Width="320" Padding="20,18">
+    <Border Background="{StaticResource HeaderBackgroundBrush}" Width="320" Padding="20,18">
         <StackPanel>
 
             <TextBlock Text="Вход менеджера" Style="{StaticResource HeaderTitleText}" Margin="0,0,0,16"/>

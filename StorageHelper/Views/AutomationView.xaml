@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              d:DesignWidth="580">
 
-    <Border Background="{StaticResource CardBackgroundBrush}" Width="580" Padding="24,20">
+    <Border Background="{StaticResource HeaderBackgroundBrush}" Width="580" Padding="24,20">
         <DockPanel>
 
             <TextBlock DockPanel.Dock="Top" Text="Сборка корзины"

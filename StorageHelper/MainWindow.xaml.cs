@@ -1,4 +1,5 @@
-﻿using StorageHelper.ViewModels;
+﻿using StorageHelper.Utility;
+using StorageHelper.ViewModels;
 using System.Windows;
 
 namespace StorageHelper
@@ -12,6 +13,12 @@ namespace StorageHelper
         {
             InitializeComponent();
             DataContext = vm;
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            DarkTitleBar.ApplyDarkBar(this);
         }
     }
 }

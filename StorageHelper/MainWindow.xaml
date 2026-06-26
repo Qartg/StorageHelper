@@ -7,9 +7,9 @@
         xmlns:Behaviors="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:vm="clr-namespace:StorageHelper.ViewModels"
         xmlns:view="clr-namespace:StorageHelper.Views"
-        mc:Ignorable="d"
+        mc:Ignorable="d" ResizeMode="CanMinimize"
         Title="StorageHelper"
-        Height="660" Width="1037" MinWidth="760"
+        Height="675" Width="1031" MinWidth="760"
         Background="{StaticResource WindowBackgroundBrush}">
 
     <Behaviors:Interaction.Triggers>

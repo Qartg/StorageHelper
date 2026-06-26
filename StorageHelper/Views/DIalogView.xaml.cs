@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using StorageHelper.Utility;
+using System.Windows;
 
 namespace StorageHelper.Views
 {
@@ -10,6 +11,12 @@ namespace StorageHelper.Views
         public DialogView()
         {
             InitializeComponent();
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            DarkTitleBar.ApplyDarkBar(this);
         }
     }
 }

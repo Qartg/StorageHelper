@@ -1,11 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
-using Microsoft.Win32;
 using StorageHelper.Models;
-using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Net.Http;
 using System.Text.Json;
 
 
@@ -13,36 +9,35 @@ namespace StorageHelper.Services.Automation
 {
     public record class OzonLd(string? Sku, string? Name, string? Description, decimal? Price, string? Image);
         
-    public class OzonAutomation : IVendorAutomation, IAsyncDisposable
+    public class OzonAutomation : IVendorAutomation
     {
         private readonly ILogger<OzonAutomation> _logger;
-        private IPlaywright? _pw;
-        private IBrowser? _browser;
-        private IPage? _page;
-        private bool _ready;
+        private readonly IBrowserSession _browserSession;
+        private readonly AppSettings _settings;
+        private bool _loggedIn;
 
-        public IPage Page => _page ?? throw new InvalidOperationException("Страница не загружена");
+        public IPage Page => _browserSession.Page;
 
-        private const string OZON_BASE_LINK = "https://www.ozon.ru/";
-
-        private readonly string ProfilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OzonBrowserProfile");
-
-        public OzonAutomation(ILogger<OzonAutomation> logger)
+        public OzonAutomation(ILogger<OzonAutomation> logger, IBrowserSession browserSession, AppSettings settings)
         {
             _logger = logger;
+            _browserSession = browserSession;
+
+            _browserSession.Disconnected += () => _loggedIn = false;
+            _settings = settings;
         }
 
         public async Task<AddToCartResult> AddItemToCart(string sku, int quantity, CancellationToken ct = default)
         {
             try
             {
-                if (!await EnsureStartedAsync(ct))
+                if (!await EnsureReadyAsync(ct))
                     return new(sku, false, "Произошла ошибка при открытии браузера");
 
-                if (!Page.Url.Contains($"{sku}/?oos_search=false"))
-                    await OpenAsync($"{OZON_BASE_LINK}product/{sku}/?oos_search=false");
+                if (!Page.Url.Contains(sku))
+                    await OpenAsync(OzonConstants.Product(sku));
 
-                var ld = await Page.Locator("script[type='application/ld+json']").First.TextContentAsync();
+                var ld = await Page.Locator(OzonConstants.JsonLdScript).First.TextContentAsync();
                 if (ld == null)
                     throw new Exception("ld оказался пустым");
 
@@ -51,7 +46,7 @@ namespace StorageHelper.Services.Automation
                     return new(sku, false, "Не удалось получить имя товара");
 
                 await EnsureItemInCart(sku);
-                await OpenAsync($"{OZON_BASE_LINK}cart");
+                await OpenAsync(OzonConstants.Cart);
 
                 int? finalInCart = await SetQuantityInCart(name, quantity);
                 
@@ -70,12 +65,12 @@ namespace StorageHelper.Services.Automation
         {
             try
             {
-                if(!await EnsureStartedAsync(ct))
+                if(!await EnsureReadyAsync(ct))
                     return new(sku, false, null, null, null, null, null, null, "Произошла ошибка при открытии браузера");
 
-                await OpenAsync($"{OZON_BASE_LINK}product/{sku}/?oos_search=false");
+                await OpenAsync(OzonConstants.Product(sku));
 
-                var ld = await Page.Locator("script[type='application/ld+json']").First.TextContentAsync();
+                var ld = await Page.Locator(OzonConstants.JsonLdScript).First.TextContentAsync();
                 if (ld == null)
                     throw new Exception("ld оказался пустым");
 
@@ -83,10 +78,10 @@ namespace StorageHelper.Services.Automation
                 if (pLd.Sku == null || pLd.Sku != sku)
                     return new(sku, false, null, null, null, null, null, null, "SKU не совпадают");
 
-                var vendorLocator = Page.Locator("a[href*='/seller/'][title]").First;
+                var vendorLocator = Page.Locator(OzonConstants.VendorLink).First;
                 var vendor = await vendorLocator.CountAsync() > 0 ? await vendorLocator.GetAttributeAsync("title") : null;
 
-                bool outOfStock = await Page.Locator("[data-widget='webOutOfStock']").First.CountAsync() > 0;
+                bool outOfStock = await Page.Locator(OzonConstants.OutOfStockBlock).First.CountAsync() > 0;
 
                 string msg = outOfStock ? "Товара нет в наличии" : "Успешно получил информацию о товаре";
                 return new(sku, true, pLd.Name, pLd.Description, vendor, pLd.Image, !outOfStock, pLd.Price, msg);
@@ -102,9 +97,9 @@ namespace StorageHelper.Services.Automation
         private async Task<int?> SetQuantityInCart(string name, int quantity)
         {
             var qty = Page.GetByText(name).First
-                    .Locator("xpath=ancestor::*[.//input[@inputmode='decimal']][1]")
-                    .Locator("input[inputmode='decimal']");
-            await qty.WaitForAsync(new() { Timeout = 10000 });
+                    .Locator(OzonConstants.QuantityInputAncestor)
+                    .Locator(OzonConstants.QuantityInput);
+            await qty.WaitForAsync();
 
             if(int.TryParse(await qty.InputValueAsync(), out var p) && p == quantity) 
                 return p;
@@ -113,27 +108,27 @@ namespace StorageHelper.Services.Automation
             {
                 await qty.FillAsync(quantity.ToString());
                 await qty.PressAsync("Tab");
-            }, resp => resp.Url.Contains("_action/summary") && resp.Status == 200);
+            }, resp => resp.Url.Contains(OzonConstants.CartSummaryResponse) && resp.Status == 200);
 
             return int.TryParse(await qty.InputValueAsync(), out p) ? p : null;
         }
 
         private async Task EnsureItemInCart(string sku)
         {
-            var toCartWidgetLocator = Page.Locator("[data-widget='webAddToCart']:visible");
-            await toCartWidgetLocator.First.WaitForAsync(new() { Timeout = 10000 });
+            var toCartWidgetLocator = Page.Locator(OzonConstants.AddToCartWidget);
+            await toCartWidgetLocator.First.WaitForAsync();
 
-            var toCartButton = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = "В корзину" });
+            var toCartButton = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = OzonConstants.AddToCartButtonText });
             if (await toCartButton.CountAsync() > 0)
             {
                 await Page.RunAndWaitForResponseAsync(async () =>
                 {
                     await toCartButton.ClickAsync();
-                }, resp => resp.Url.Contains("addToCart") && resp.Status == 200);
+                }, resp => resp.Url.Contains(OzonConstants.AddToCartResponse) && resp.Status == 200);
             }
 
-            var inCartBtn = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = "В корзине" });
-            await inCartBtn.WaitForAsync(new() { Timeout = 10000 });
+            var inCartBtn = toCartWidgetLocator.First.GetByRole(AriaRole.Button, new() { Name = OzonConstants.InCartButtonText });
+            await inCartBtn.WaitForAsync();
             bool inCart = await inCartBtn.CountAsync() > 0;
 
             if (!inCart)
@@ -154,55 +149,11 @@ namespace StorageHelper.Services.Automation
             return new OzonLd(sku, name, desc, price, image);
         }
 
-        private async Task<bool> EnsureStartedAsync(CancellationToken ct = default, IProgress<AuthPhase>? progress = null)
-        {
-            try
-            {
-                if (_ready && _page != null) return true;
-                _pw ??= await Playwright.CreateAsync();
-
-                if(await WaitForCDPAsync(ct, 2.5) == null)
-                    await TryStartBrowser();
-
-                if (await WaitForCDPAsync(ct) is int port)
-                {
-                    _browser ??= await _pw.Chromium.ConnectOverCDPAsync($"http://127.0.0.1:{port}");
-                    var ctx = _browser.Contexts.Count > 0 ? _browser.Contexts[0] : await _browser.NewContextAsync();
-                    _page = ctx.Pages.Count > 0 ? ctx.Pages[0] : await ctx.NewPageAsync();
-                    _browser.Disconnected += BrowserDisconnected;
-                    ctx.SetDefaultTimeout(10000f);
-
-                    await EnsureLoggedInAsync(ct, progress);
-                    _ready = true;
-
-                    return true;
-                }
-                else
-                    _logger.LogError("CDP не поднялся в течение 15 секунд");
-
-                _ready = false;
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _ready = false;
-                _logger.LogError(ex, "Не удалось запустить сессию автоматизации");
-                return false;
-            }
-        }
-
-        private void BrowserDisconnected(object? sender, IBrowser e)
-        {
-            _ready = false; 
-            _page = null;
-            _browser = null;
-        }
-
         private async Task EnsureLoggedInAsync(CancellationToken ct = default, IProgress<AuthPhase>? progress = null)
         {
-            await OpenAsync(OZON_BASE_LINK);
+            await OpenAsync(OzonConstants.Home);
 
-            var loginBtn = Page.Locator("[data-widget='profileMenuAnonymous']").First;
+            var loginBtn = Page.Locator(OzonConstants.AnonymousProfileMenu).First;
 
             if (await loginBtn.CountAsync() > 0)
             {
@@ -216,6 +167,7 @@ namespace StorageHelper.Services.Automation
                     if (await loginBtn.CountAsync() == 0)
                     {
                         progress?.Report(AuthPhase.Ready);
+                        _loggedIn = true;
                         return;
                     }
 
@@ -224,191 +176,15 @@ namespace StorageHelper.Services.Automation
 
                 throw new Exception("Превышено время ожидания при авторизации в аккаунт");
             }
+            _loggedIn = true;
         }
 
-        private async Task<int?> WaitForCDPAsync(CancellationToken ct = default, double waitTime = 15)
-        {
-            using var http = new HttpClient() { Timeout = TimeSpan.FromSeconds(2) };
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(waitTime);
-
-            while(DateTime.UtcNow < deadline)
-            {
-                await Task.Delay(200, ct);
-                try
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    int? port = await ReadPortFromFile();
-                    if (port == null)
-                        continue;
-
-                    var response = await http.GetAsync($"http://127.0.0.1:{port}/json/version", ct);
-                    if (response.IsSuccessStatusCode)
-                        return port;
-                }
-                catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
-                {
-                    if (ct.IsCancellationRequested) return null;
-                }
-            }
-
-            return null;
-        }
-
-        private async Task<int?> ReadPortFromFile()
-        {
-            string filePath = Path.Combine(ProfilePath, "DevToolsActivePort");
-            if (File.Exists(filePath))
-            {
-                using (var fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                using (var sReader = new StreamReader(fStream))
-                {
-                    string? line;
-
-                    if ((line = await sReader.ReadLineAsync()) != null)
-                        if (int.TryParse(line, out var port))
-                            return port;
-                }
-            }
-            return null;
-        }
-
-        private async Task TryStartBrowser()
-        {
-            string? browserPath = FindBrowserPath();
-
-            if (browserPath == null)
-                throw new Exception("Не удалось найти поддерживаемый браузер в системе. Для работы автоматизации нужен Chrome или Edge");
-
-            ProcessStartInfo psi = new()
-            {
-                FileName = browserPath,
-                UseShellExecute = false,
-            };
-
-            psi.ArgumentList.Add($"--user-data-dir={ProfilePath}");
-            psi.ArgumentList.Add("--no-first-run");
-            psi.ArgumentList.Add("--no-default-browser-check");
-            psi.ArgumentList.Add("--disable-session-crashed-bubble");
-
-            if (!Directory.Exists(ProfilePath))
-            {
-                psi.ArgumentList.Add(OZON_BASE_LINK);
-                var warmup = Process.Start(psi);
-                if (warmup == null)
-                    throw new Exception("Не удалось запустить процесс браузера");
-
-                await WaitForOzonCookies();
-                warmup.Kill(true);
-                await warmup.WaitForExitAsync();
-            }
-
-            psi.ArgumentList.Add("--remote-debugging-port=0");
-
-            if (Process.Start(psi) == null)
-                throw new Exception("Не удалось запустить процесс браузера");
-        }
-
-        long SafeLen(string p)
-        {
-            try { return new FileInfo(p).Length; }
-            catch { return 0; }
-        }
-        long TotalLen(string cookiesPath, string walPath) => SafeLen(cookiesPath) + SafeLen(walPath);
-
-        private async Task<bool> WaitForOzonCookies(int timeoutSeconds = 35, CancellationToken ct = default)
-        {
-            string networkDir = Path.Combine(ProfilePath, "Default", "Network");
-            string cookiesPath = Path.Combine(networkDir, "Cookies");
-            string walPath = cookiesPath + "-wal";
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(timeoutSeconds);
-
-            while (!File.Exists(cookiesPath))
-            {
-                if (DateTime.UtcNow >= deadline || ct.IsCancellationRequested)
-                    return false;
-                await Task.Delay(200, ct);
-            }
-
-            using var fsw = new FileSystemWatcher(networkDir, "Cookies*")
-            {
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
-                EnableRaisingEvents = true
-            };
-
-            var lastChange = DateTime.UtcNow;
-            fsw.Changed += (_, __) => lastChange = DateTime.UtcNow;
-
-            var quietWindow = TimeSpan.FromMilliseconds(1500);
-            while (DateTime.UtcNow - lastChange < quietWindow)
-            {
-                if (DateTime.UtcNow >= deadline || ct.IsCancellationRequested)
-                    return false;
-                await Task.Delay(200, ct);
-            }
-
-            long baseline = TotalLen(cookiesPath, walPath);
-
-            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            fsw.Changed += (_, __) =>
-            {
-                if (TotalLen(cookiesPath, walPath) > baseline)
-                    tcs.TrySetResult();
-            };
-
-            if (TotalLen(cookiesPath, walPath) > baseline)
-                tcs.TrySetResult();
-
-            var remaining = deadline - DateTime.UtcNow;
-            if (remaining <= TimeSpan.Zero)
-                return false;
-
-            try
-            {
-                await tcs.Task.WaitAsync(remaining, ct);
-                return true;
-            }
-            catch (TimeoutException)
-            {
-                if (TotalLen(cookiesPath, walPath) > baseline)
-                    return true;
-
-                return false;
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
-            }
-        }
-
-        private static string? FindBrowserPath()
-        {
-            string?[] candidates = new string?[]
-            {
-                ReadAppPath("chrome.exe"), ReadAppPath("msedge.exe"),
-                @"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-            };
-
-            return candidates.FirstOrDefault(p => p is not null && File.Exists(p));
-        }
-
-        private static string? ReadAppPath(string exeName)
-        {
-            foreach (var root in new[] { "HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER" })
-            {
-                if (Registry.GetValue(@$"{root}\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exeName}", null, null) is string p
-                    && !string.IsNullOrEmpty(p))
-                    return p.Trim('"');
-            }
-            return null;
-        }
 
         private async Task OpenAsync(string url)
         {
             await Page.GotoAsync(url);
             await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-            await Page.GetByRole(AriaRole.Banner).First.WaitForAsync(new() { Timeout = 10000 });
+            await Page.GetByRole(AriaRole.Banner).First.WaitForAsync();
         }
 
         private static decimal? ParsePrice(in JsonElement root)
@@ -426,12 +202,17 @@ namespace StorageHelper.Services.Automation
             return result;
         }
 
-        public async ValueTask DisposeAsync()
-        {
-            if(_browser != null) await _browser.DisposeAsync();
-            if (_pw != null) _pw.Dispose();
-        }
+        public async Task<bool> ConnectAsync(IProgress<AuthPhase> progress, CancellationToken ct = default) => await EnsureReadyAsync(ct, progress);
 
-        public Task<bool> ConnectAsync(IProgress<AuthPhase> progress, CancellationToken ct = default) => EnsureStartedAsync(ct, progress);
+        private async Task<bool> EnsureReadyAsync(CancellationToken ct = default, IProgress<AuthPhase>? progress = null)
+        {
+            if (!await _browserSession.EnsureStartedAsync(OzonConstants.Home, ct))
+                return false;
+
+            if (_settings.RequireLoggingIn && !_loggedIn)
+                await EnsureLoggedInAsync(ct, progress);
+
+            return true;
+        }
     }
 }

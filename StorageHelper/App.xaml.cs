@@ -9,6 +9,7 @@ using StorageHelper.Services;
 using StorageHelper.Services.Automation;
 using StorageHelper.Services.Data;
 using StorageHelper.ViewModels;
+using System.IO;
 using System.Windows;
 
 namespace StorageHelper
@@ -40,6 +41,7 @@ namespace StorageHelper
             services.AddLogging(b => b.AddSerilog(dispose: true));
             //Config
             services.AddSingleton<IConfigService, ConfigService>(sp => cfg);
+            services.AddSingleton(sp => sp.GetRequiredService<IConfigService>().Current);
             //Db
             services.AddDbContextFactory<StorageContext>((sp, opt) => opt.UseSqlite(cfg.Current.ConnectionString));
             //services
@@ -47,6 +49,9 @@ namespace StorageHelper
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IPricingService, PricingService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IBrowserSession>(sp =>new BrowserSession(
+                Path.Combine(AppContext.BaseDirectory, OzonConstants.BrowserProfileName),
+                sp.GetRequiredService<ILogger<BrowserSession>>()));
 
             var type = cfg.Current.FakeAutomation ? typeof(FakeVendorAutomation) : typeof(OzonAutomation);
             services.AddSingleton(typeof(IVendorAutomation), type);

@@ -7,5 +7,6 @@
         public string ConnectionString { get; set; } = "Data Source=Storage.db";
         public PasswordData? Password { get; set; }
         public bool FakeAutomation { get; set; } = false;
+        public bool RequireLoggingIn { get; set; } = false;
     }
 }
